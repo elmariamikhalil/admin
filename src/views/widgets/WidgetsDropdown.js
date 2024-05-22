@@ -70,14 +70,14 @@ const WidgetsDropdown = (props) => {
               className="mt-3 mx-3"
               style={{ height: '70px' }}
               data={{
-                labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+                labels: ['January', 'February', 'March', 'April', 'May'],
                 datasets: [
                   {
-                    label: 'My First dataset',
+                    label: 'Projects',
                     backgroundColor: 'transparent',
                     borderColor: 'rgba(255,255,255,.55)',
                     pointBackgroundColor: getStyle('--cui-primary'),
-                    data: [65, 59, 84, 84, 51, 55, 40],
+                    data: [2, 2, 2, 2, 3],
                   },
                 ],
               }}

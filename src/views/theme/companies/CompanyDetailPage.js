@@ -57,7 +57,7 @@ const CompanyDetailPage = () => {
                   <CRow className="align-items-center">
                     <CCol md="6">
                       <CImage
-                        src={client.Logo}
+                        src={`${ENDPOINT}/uploads/${client.Logo}`}
                         alt="Client Logo"
                         rounded
                         thumbnail

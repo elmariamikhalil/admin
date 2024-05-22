@@ -28,13 +28,17 @@ app.use(cors())
 app.use(express.json()) // for parsing application/json
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads'))) // Serve uploaded files
 
-// Configure multer for handling file uploads
+// Configure Multer for file uploads
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../public/uploads')) // Specify the public directory where uploaded files will be stored
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../public/uploads')
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true })
+    }
+    cb(null, uploadDir)
   },
-  filename: function (req, file, cb) {
-    cb(null, file.originalname) // Use the original filename for the uploaded file
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`)
   },
 })
 const upload = multer({ storage: storage })
@@ -58,7 +62,7 @@ app.post('/maincompany', upload.single('logo'), (req, res) => {
 })
 
 // Route for uploading logo and adding a new company
-app.post('/client', upload.single('logo'), (req, res) => {
+app.put('/addclient/:id', upload.single('logo'), (req, res) => {
   // Extract data from the request body
   const { Name, Owner, Email, Category } = req.body
   const logoUrl = `/uploads/${req.file.filename}`
@@ -100,7 +104,7 @@ app.get('/client/:Id', (req, res) => {
     }
   })
 })
-/*
+
 // Route for registering a new user
 app.post('/user', (req, res) => {
   // Extract user details from the request body
@@ -137,42 +141,69 @@ app.post('/user', (req, res) => {
     })
   })
 })
-*/
-// Define a route to update a company
-app.put('/client/:id', upload.single('Picture'), (req, res) => {
-  const clientId = req.params.id
-  const { Name, Owner, Email, Category } = req.body
-  let pictureBase64 = null
 
-  if (req.file) {
-    const picturePath = req.file.path
-    try {
-      const pictureBuffer = fs.readFileSync(picturePath)
-      pictureBase64 = pictureBuffer.toString('base64')
-    } catch (error) {
-      console.error('Error reading picture file:', error)
-      return res.status(500).json({ error: 'Failed to read picture file' })
-    }
+// Define a route to update a company
+const updateClientDetails = (clientId, details, res) => {
+  const { Name, Owner, Email, Category, Logo } = details
+
+  let query = ''
+  let values = []
+
+  if (Logo) {
+    query = 'UPDATE client SET Name = ?, Owner = ?, Email = ?, Category = ?, Logo = ? WHERE Id = ?'
+    values = [Name, Owner, Email, Category, Logo, clientId]
+  } else {
+    query = 'UPDATE client SET Name = ?, Owner = ?, Email = ?, Category = ? WHERE Id = ?'
+    values = [Name, Owner, Email, Category, clientId]
   }
 
-  const query = pictureBase64
-    ? 'UPDATE client SET Name = ?, Owner = ?, Email = ?, Category = ?, Picture = ? WHERE Id = ?'
-    : 'UPDATE client SET Name = ?, Owner = ?, Email = ?, Category = ? WHERE Id = ?'
-
-  const values = pictureBase64
-    ? [Name, Owner, Email, Category, pictureBase64, clientId]
-    : [Name, Owner, Email, Category, clientId]
-
-  pool.query(query, values, (err, results) => {
+  pool.query(query, values, (err, result) => {
     if (err) {
       console.error('Error updating client:', err)
       return res.status(500).json({ error: 'Failed to update client' })
     }
-
+    console.log('Client updated successfully')
     res.json({ message: 'Client updated successfully' })
   })
-})
+}
 
+// Endpoint to update client details
+app.put('/editclient/:id', upload.single('Picture'), (req, res) => {
+  const clientId = req.params.id
+  const { Name, Owner, Email, Category } = req.body
+  let logoFilename = null
+
+  if (req.file) {
+    const picturePath = req.file.path
+    fs.readFile(picturePath, (error, pictureBuffer) => {
+      if (error) {
+        console.error('Error reading picture file:', error)
+        return res.status(500).json({ error: 'Failed to read picture file' })
+      }
+      // Convert the picture buffer to base64 string
+      const base64Image = pictureBuffer.toString('base64')
+      // Determine the file extension
+      const ext = path.extname(req.file.originalname).toLowerCase()
+      // Generate a unique filename with extension
+      logoFilename = `logo_${Date.now()}${ext}`
+      // Example of saving the file to a specific directory
+      const uploadPath = path.join(__dirname, '../public/uploads', logoFilename)
+      console.log(uploadPath)
+      // Write the base64 image data to the file
+      fs.writeFile(uploadPath, base64Image, 'base64', (err) => {
+        if (err) {
+          console.error('Error saving picture file:', err)
+          return res.status(500).json({ error: 'Failed to save picture file' })
+        }
+        // Once the file is saved, proceed to update client details in the database
+        updateClientDetails(clientId, { Name, Owner, Email, Category, Logo: logoFilename }, res)
+      })
+    })
+  } else {
+    // If no file is uploaded, proceed to update client details without logoFilename
+    updateClientDetails(clientId, { Name, Owner, Email, Category }, res)
+  }
+})
 app.get('/user', (req, res) => {
   const sql = 'SELECT * FROM user'
   pool.query(sql, (err, result) => {
@@ -219,16 +250,12 @@ app.post('/user/authenticate', (req, res) => {
       }
 
       // Generate a JWT token with a payload containing user information
-      const payload = {
-        id: results[0].Id,
-        email: results[0].email,
-        name: results[0].Name,
-        role: results[0].Role, // Assuming Role is a column in your user table
-      }
-      const authToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' })
+      const token = jwt.sign({ id: results[0].id, email: results[0].email }, JWT_SECRET, {
+        expiresIn: '1h', // Token expiration time (adjust as needed)
+      })
 
-      // Return the authentication token and role as a JSON response
-      res.json({ token: authToken, role: payload.role })
+      // Send the token as a response
+      res.json({ token })
     })
   })
 })

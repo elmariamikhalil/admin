@@ -1,160 +1,157 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
+  CContainer,
   CCard,
   CCardHeader,
   CCardBody,
   CForm,
   CFormInput,
-  CFormLabel,
+  CFormSelect,
   CButton,
-  CAlert,
+  CFormLabel,
+  CCol,
 } from '@coreui/react'
 
-const ENDPOINT = 'http://localhost:5000'
+const ENDPOINT = 'http://localhost:5000' // Adjusted the endpoint to match the server.js configuration
 
 const EditCompany = () => {
   const { id } = useParams()
-  const [company, setCompany] = useState({
-    Name: '',
-    Owner: '',
-    Email: '',
-    Category: '',
-    Picture: '',
-  })
-  const [newPicture, setNewPicture] = useState(null)
-  const [error, setError] = useState('')
+  const [name, setName] = useState('')
+  const [owner, setOwner] = useState('')
+  const [email, setEmail] = useState('')
+  const [category, setCategory] = useState('')
+  const [Picture, setLogo] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const fetchCompany = async () => {
+    const fetchCompanyDetails = async () => {
       try {
         const response = await fetch(`${ENDPOINT}/client/${id}`)
-        if (!response.ok) {
-          throw new Error('Failed to fetch company details')
-        }
         const data = await response.json()
-        setCompany(data)
+        setName(data.Name)
+        setOwner(data.Owner)
+        setEmail(data.Email)
+        setCategory(data.Category)
       } catch (error) {
-        console.error('Error fetching company:', error)
-        setError('Failed to fetch company details. Please try again.')
+        console.error('Error fetching company details:', error)
       }
     }
 
-    fetchCompany()
+    fetchCompanyDetails()
   }, [id])
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setCompany({ ...company, [name]: value })
+  const handleNameChange = (e) => {
+    setName(e.target.value)
   }
 
-  const handleFileChange = (e) => {
-    setNewPicture(e.target.files[0])
+  const handleOwnerChange = (e) => {
+    setOwner(e.target.value)
+  }
+
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value)
+  }
+
+  const handleCategoryChange = (e) => {
+    setCategory(e.target.value)
+  }
+
+  const handleLogoChange = (e) => {
+    setLogo(e.target.files[0])
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     const formData = new FormData()
-    formData.append('Name', company.Name)
-    formData.append('Owner', company.Owner)
-    formData.append('Email', company.Email)
-    formData.append('Category', company.Category)
-    if (newPicture) {
-      formData.append('Picture', newPicture)
-    }
+    formData.append('Name', name)
+    formData.append('Owner', owner)
+    formData.append('Email', email)
+    formData.append('Category', category)
+    formData.append('Picture', Picture)
 
     try {
-      const response = await fetch(`${ENDPOINT}/client/${id}`, {
+      const response = await fetch(`${ENDPOINT}/editclient/${id}`, {
         method: 'PUT',
         body: formData,
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to update company')
+      if (response.ok) {
+        // Company updated successfully
+        alert('Company updated successfully')
+        navigate('/theme/companies/Companies') // Navigate to a desired route after update
+      } else {
+        // Handle error
+        alert('Failed to update company')
       }
-
-      navigate('/theme/companies')
     } catch (error) {
       console.error('Error updating company:', error)
-      setError('Failed to update company. Please try again.')
+      alert('An error occurred while updating company')
     }
   }
 
   return (
-    <CCard className="mb-4">
-      <CCardHeader>Edit Company</CCardHeader>
-      <CCardBody>
-        {error && <CAlert color="danger">{error}</CAlert>}
-        <CForm onSubmit={handleSubmit} encType="multipart/form-data">
-          <div>
-            <CFormLabel>Name</CFormLabel>
-            <CFormInput
-              type="text"
-              name="Name"
-              value={company.Name}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div>
-            <CFormLabel>Owner</CFormLabel>
-            <CFormInput
-              type="text"
-              name="Owner"
-              value={company.Owner}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div>
-            <CFormLabel>Email</CFormLabel>
-            <CFormInput
-              type="email"
-              name="Email"
-              value={company.Email}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div>
-            <CFormLabel>Category</CFormLabel>
-            <CFormInput
-              type="text"
-              name="Category"
-              value={company.Category}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div>
-            <CFormLabel>Current Picture</CFormLabel>
-            {company.Picture && (
-              <div>
-                <img
-                  src={`data:image/jpeg;base64,${company.Picture}`}
-                  alt="Company"
-                  style={{
-                    width: '200px',
-                    height: '200px',
-                    objectFit: 'cover',
-                    marginBottom: '10px',
-                  }}
-                />
-              </div>
-            )}
-          </div>
-          <div>
-            <CFormLabel>Change Picture</CFormLabel>
-            <CFormInput type="file" name="Picture" onChange={handleFileChange} />
-          </div>
-          <CButton type="submit" color="primary">
-            Save Changes
-          </CButton>
-        </CForm>
-      </CCardBody>
-    </CCard>
+    <CContainer>
+      <CCard className="mb-4">
+        <CCardHeader>Edit Company</CCardHeader>
+        <CCardBody>
+          <CForm onSubmit={handleSubmit} className="row g-3">
+            <CCol md={6}>
+              <CFormLabel htmlFor="name">Name:</CFormLabel>
+              <CFormInput
+                type="text"
+                value={name}
+                onChange={handleNameChange}
+                required
+                id="name"
+                autoComplete="off"
+              />
+            </CCol>
+            <CCol md={6}>
+              <CFormLabel htmlFor="owner">Owner:</CFormLabel>
+              <CFormInput
+                type="text"
+                value={owner}
+                onChange={handleOwnerChange}
+                required
+                id="owner"
+              />
+            </CCol>
+            <CCol md={6}>
+              <CFormLabel htmlFor="email">Email:</CFormLabel>
+              <CFormInput
+                type="email"
+                value={email}
+                onChange={handleEmailChange}
+                required
+                id="email"
+                autoComplete="email"
+              />
+            </CCol>
+            <CCol md={6}>
+              <CFormLabel htmlFor="category">Category:</CFormLabel>
+              <CFormSelect value={category} onChange={handleCategoryChange} required id="category">
+                <option value="">Select Category</option>
+                <option value="Key Client">Key Client</option>
+                <option value="Client">Client</option>
+                <option value="Intern">Intern</option>
+                <option value="CFO">CFO</option>
+                <option value="Exit Client">Exit Client</option>
+                <option value="On Hold">On Hold</option>
+                <option value="SOW">SOW</option>
+              </CFormSelect>
+            </CCol>
+            <CCol md={6}>
+              <CFormLabel htmlFor="Picture">Logo:</CFormLabel>
+              <CFormInput type="file" accept="image/*" onChange={handleLogoChange} id="Picture" />
+            </CCol>
+            <CButton color="primary" type="submit">
+              Update Company
+            </CButton>
+          </CForm>
+        </CCardBody>
+      </CCard>
+    </CContainer>
   )
 }
 

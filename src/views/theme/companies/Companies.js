@@ -29,7 +29,7 @@ const Companies = () => {
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const response = await fetch(`${ENDPOINT}/client/`)
+        const response = await fetch(`${ENDPOINT}/client`)
         const data = await response.json()
         setClients(data)
       } catch (error) {

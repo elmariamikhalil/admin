@@ -82,7 +82,7 @@ const _nav = [
     icon: <CIcon icon={cilLibraryAdd} customClassName="nav-icon" />,
   },
 
-  {
+  /*{
     component: CNavGroup,
     name: 'Forms',
     icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
@@ -239,7 +239,7 @@ const _nav = [
     name: 'Docs',
     href: 'https://coreui.io/react/docs/templates/installation/',
     icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
-  },
+  },*/
 ]
 
 export default _nav
