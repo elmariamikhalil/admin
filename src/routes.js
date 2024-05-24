@@ -6,7 +6,8 @@ const Companies = React.lazy(() => import('./views/theme/companies/Companies'))
 const AddClient = React.lazy(() => import('./views/theme/companies/AddClient'))
 const CompanyDetailPage = React.lazy(() => import('./views/theme/companies/CompanyDetailPage'))
 const EditCompany = React.lazy(() => import('./views/theme/companies/EditCompany'))
-/*const Typography = React.lazy(() => import('./views/theme/typography/Typography'))*/
+const AddMemberToTeam = React.lazy(() => import('./views/theme/team/AddMemberToTeam'))
+const AddTeamToClient = React.lazy(() => import('./views/theme/team/AddTeamToClient'))
 const Page500 = React.lazy(() => import('./views/pages/page500/Page500'))
 // Base
 const Team = React.lazy(() => import('./views/base/accordion/Team'))
@@ -76,7 +77,9 @@ const routes = [
     element: EditCompany,
   },
   { path: '/pages/page500', name: 'Page 500', element: Page500 },
-  /*{ path: '/theme/typography', name: 'Typography', element: Typography },*/
+  { path: '/theme/team', name: 'Team', element: Team },
+  { path: '/theme/team/AddTeamToClient', name: 'Add Memebers To Team', element: AddTeamToClient },
+  { path: '/theme/team/AddMemberToTeam', name: 'Add Team To Client', element: AddMemberToTeam },
   { path: '/base', name: 'Base', element: Cards, exact: true },
   { path: '/base/accordion/Team', name: 'Team', element: Team },
   { path: '/base/accordion/EditTeam/:id', name: 'Edit Team', element: EditTeam },

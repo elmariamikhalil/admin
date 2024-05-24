@@ -466,6 +466,245 @@ app.put('/user/:id', async (req, res) => {
     res.status(500).json({ error: 'Server error' })
   }
 })
+//Team and memebers//
 
+// Add Team to Client
+const addTeamToClient = (req, res) => {
+  const { clientId } = req.params
+  const { teamId } = req.body
+
+  if (!clientId || !teamId) {
+    return res.status(400).json({ error: 'ClientId and TeamId are required' })
+  }
+
+  // Insert record into client_teams table
+  const sql = 'INSERT INTO client_teams (client_id, team_id) VALUES (?, ?)'
+  pool.query(sql, [clientId, teamId], (err, result) => {
+    if (err) {
+      console.error('Error adding team to client:', err)
+      return res.status(500).json({ error: 'Failed to add team to client' })
+    }
+    res.status(201).json({ message: 'Team added to client successfully' })
+  })
+}
+
+// Add Member to Team
+const addMemberToTeam = (req, res) => {
+  const { teamId } = req.params
+  const { memberId } = req.body
+
+  // Insert record into team_members table
+  const sql = 'INSERT INTO team_members (team_id, member_id) VALUES (?, ?)'
+  pool.query(sql, [teamId, memberId], (err, result) => {
+    if (err) {
+      console.error('Error adding member to team:', err)
+      return res.status(500).json({ error: 'Failed to add member to team' })
+    }
+    res.status(201).json({ message: 'Member added to team successfully' })
+  })
+}
+
+app.post('/clients/:clientId/teams', addTeamToClient)
+
+// Ensure specific error messages are sent to the client
+app.use((err, req, res, next) => {
+  console.error(err.stack)
+  res.status(500).send('Something broke!')
+})
+// Sanitize user input to prevent SQL injection attacks
+app.post('/clients/:clientId/teams', (req, res) => {
+  const { clientId } = req.params
+  const { teamId } = req.body
+
+  if (!clientId || !teamId) {
+    return res.status(400).json({ error: 'ClientId and TeamId are required' })
+  }
+
+  // Sanitize input
+  const clientIdSanitized = pool.escape(clientId)
+  const teamIdSanitized = pool.escape(teamId)
+
+  // Insert record into client_teams table
+  const sql = 'INSERT INTO client_teams (client_id, team_id) VALUES (?, ?)'
+  pool.query(sql, [clientIdSanitized, teamIdSanitized], (err, result) => {
+    id
+    if (err) {
+      console.error('Error adding team to client:', err)
+      return res.status(500).json({ error: 'Failed to add team to client' })
+    }
+    res.status(201).json({ message: 'Team added to client successfully' })
+  })
+})
+
+app.get('/teams', (req, res) => {
+  const sql = 'SELECT * FROM team'
+  pool.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching teams:', err)
+      res.status(500).json({ error: 'Failed to fetch teams' })
+      return
+    }
+    res.status(200).json(results)
+  })
+})
+// Assuming you have an array or a database collection of members
+// Fetch members
+app.get('/members', (req, res) => {
+  const sql = 'SELECT * FROM user' // Adjust this query based on your table structure
+  pool.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching members:', err)
+      res.status(500).json({ error: 'Failed to fetch members' })
+      return
+    }
+    res.status(200).json(results)
+  })
+})
+app.get('/clients/:clientId/teams', (req, res) => {
+  const clientId = req.params.clientId
+  pool.query('SELECT * FROM client_teams WHERE client_id = ?', [clientId], (error, results) => {
+    if (error) {
+      console.error('Error fetching teams:', error)
+      res.status(500).send('Server error')
+    } else {
+      res.json(results)
+    }
+  })
+})
+app.get('/clients/:clientId/teams', (req, res) => {
+  const clientId = req.params.clientId
+  const query = `
+    SELECT t.id, t.name 
+    FROM team_assignments ta
+    JOIN team t ON ta.team_id = t.id
+    WHERE ta.client_id = ?
+  `
+  pool.query(query, [clientId], (error, results) => {
+    if (error) {
+      console.error('Error fetching teams:', error)
+      res.status(500).send('Server error')
+    } else {
+      res.json(results)
+    }
+  })
+})
+// Fetch members of a team
+app.get('/teams/:teamId/members', (req, res) => {
+  const { teamId } = req.params
+  const sql = `
+    SELECT u.Id, u.name
+    FROM team_members tm
+    JOIN user u ON tm.user_id = u.Id
+    WHERE tm.team_id = ?
+  `
+  pool.query(sql, [teamId], (err, results) => {
+    if (err) {
+      console.error('Error fetching team members:', err)
+      res.status(500).json({ error: 'Failed to fetch team members' })
+      return
+    }
+    res.status(200).json(results)
+  })
+})
+// Add member to team
+app.post('/teams/:teamId/members', (req, res) => {
+  const { teamId } = req.params
+  const { memberId } = req.body
+  const sql = 'INSERT INTO team_members (team_id, user_id) VALUES (?, ?)'
+  pool.query(sql, [teamId, memberId], (err, results) => {
+    if (err) {
+      console.error('Error adding member to team:', err)
+      res.status(500).json({ error: 'Failed to add member to team' })
+      return
+    }
+    res.status(200).json({ message: 'Member added to team successfully' })
+  })
+})
+
+// Remove member from team
+app.delete('/teams/:teamId/members/:memberId', (req, res) => {
+  const { teamId, memberId } = req.params
+  const sql = 'DELETE FROM team_members WHERE team_id = ? AND user_id = ?'
+  pool.query(sql, [teamId, memberId], (err, results) => {
+    if (err) {
+      console.error('Error removing member from team:', err)
+      res.status(500).json({ error: 'Failed to remove member from team' })
+      return
+    }
+    res.status(200).json({ message: 'Member removed from team successfully' })
+  })
+})
+
+//TEST fot OPERATIONS DATA
+const administrationData = {
+  Cash: 'N/A',
+  Bank: 'O',
+  Invoice: 'DN',
+  LIP: 'W',
+  TB: 'P',
+  VAT: 'R',
+  ICP: 'D',
+  Salary: 'A',
+  CBS: 'C',
+}
+
+const backofficeData = {
+  Pay: 'N/A',
+  Billing: 'O',
+  Report: 'DN',
+  Mail: 'W',
+}
+
+const auditData = {
+  FS: 'N/A',
+  Hours: 'O',
+  Deadlines: 'DN',
+}
+
+const advisoryData = {
+  ProjectHours: 'N/A',
+  Deadlines: 'O',
+}
+
+const yearworkData = {
+  IB: 'N/A',
+  FS: 'O',
+  VPB: 'DN',
+  SUP: 'W',
+  KVK: 'P',
+}
+
+// Endpoints
+app.get('/client/:clientId', (req, res) => {
+  const clientId = req.params.clientId
+  const client = getClientById(clientId)
+  res.json(client)
+})
+
+app.get('/api/teams/:teamId', (req, res) => {
+  const teamId = req.params.teamId
+  const teamMembers = getTeamMembers(teamId)
+  res.json(teamMembers)
+})
+
+app.get('/api/administration/:clientId', (req, res) => {
+  res.json(administrationData)
+})
+
+app.get('/api/backoffice/:clientId', (req, res) => {
+  res.json(backofficeData)
+})
+
+app.get('/api/audit/:clientId', (req, res) => {
+  res.json(auditData)
+})
+
+app.get('/api/advisory/:clientId', (req, res) => {
+  res.json(advisoryData)
+})
+
+app.get('/api/yearwork/:clientId', (req, res) => {
+  res.json(yearworkData)
+})
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))

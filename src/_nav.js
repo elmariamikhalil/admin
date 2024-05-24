@@ -74,7 +74,19 @@ const _nav = [
     name: 'User List',
     to: '/Base/accordion/Users',
     icon: <CIcon icon={cilList} customClassName="nav-icon" />,
+  }, //To be tested =========================
+  {
+    component: CNavItem,
+    name: 'Add Team',
+    to: '/theme/team/AddTeamToClient',
+    icon: <CIcon icon={cilList} customClassName="nav-icon" />,
   },
+  {
+    component: CNavItem,
+    name: 'Add Members to Team',
+    to: '/theme/team/AddMemberToTeam',
+    icon: <CIcon icon={cilList} customClassName="nav-icon" />,
+  }, //======================================
   {
     component: CNavItem,
     name: 'Add Member',
