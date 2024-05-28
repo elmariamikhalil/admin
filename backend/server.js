@@ -635,8 +635,8 @@ app.delete('/teams/:teamId/members/:memberId', (req, res) => {
   })
 })
 
-//TEST fot OPERATIONS DATA
-const administrationData = {
+// Mock data for tabs
+let administrationData = {
   Cash: 'N/A',
   Bank: 'O',
   Invoice: 'DN',
@@ -647,64 +647,114 @@ const administrationData = {
   Salary: 'A',
   CBS: 'C',
 }
-
-const backofficeData = {
+let backofficeData = {
   Pay: 'N/A',
   Billing: 'O',
   Report: 'DN',
   Mail: 'W',
 }
-
-const auditData = {
+let auditData = {
   FS: 'N/A',
   Hours: 'O',
   Deadlines: 'DN',
 }
-
-const advisoryData = {
+let advisoryData = {
   ProjectHours: 'N/A',
   Deadlines: 'O',
 }
-
-const yearworkData = {
+let yearworkData = {
   IB: 'N/A',
   FS: 'O',
   VPB: 'DN',
   SUP: 'W',
   KVK: 'P',
 }
-
-// Endpoints
-app.get('/client/:clientId', (req, res) => {
-  const clientId = req.params.clientId
-  const client = getClientById(clientId)
-  res.json(client)
+//================Operations Section===================//
+// Endpoint to fetch client details
+app.get('/client/:ClientId', (req, res) => {
+  const ClientId = req.params.ClientId
+  const query = 'SELECT * FROM client WHERE Id = ?'
+  pool.query(query, [ClientId], (err, result) => {
+    if (err) {
+      console.error('Error fetching client data:', err)
+      res.status(500).json({ error: 'Error fetching client data' })
+      return
+    }
+    res.json(result[0])
+  })
 })
 
+// Endpoint to fetch team members
 app.get('/api/teams/:teamId', (req, res) => {
   const teamId = req.params.teamId
-  const teamMembers = getTeamMembers(teamId)
-  res.json(teamMembers)
+  const query = 'SELECT * FROM team WHERE id = ?'
+  pool.query(query, [teamId], (err, result) => {
+    if (err) {
+      console.error('Error fetching team members:', err)
+      res.status(500).json({ error: 'Error fetching team members' })
+      return
+    }
+    res.json({ members: result })
+  })
 })
 
-app.get('/api/administration/:clientId', (req, res) => {
-  res.json(administrationData)
+// Function to fetch tab data
+const fetchTabData = (tab, ClientId, res) => {
+  const query = `SELECT * FROM ${tab} WHERE ClientId = ?`
+  pool.query(query, [ClientId], (err, result) => {
+    if (err) {
+      console.error(`Error fetching data for ${tab}:`, err)
+      res.status(500).json({ error: `Error fetching data for ${tab}` })
+      return
+    }
+    res.json(result[0])
+  })
+}
+
+// Endpoint to fetch tab data
+app.get('/api/:tab/:ClientId', (req, res) => {
+  const tab = req.params.tab
+  const ClientId = req.params.ClientId
+  fetchTabData(tab, ClientId, res)
 })
 
-app.get('/api/backoffice/:clientId', (req, res) => {
-  res.json(backofficeData)
+// Endpoint to update tab data
+app.post('/api/:tab/:ClientId', (req, res) => {
+  const tab = req.params.tab
+  const ClientId = req.params.ClientId
+  const updatedData = req.body
+  console.log(`Updating ${tab} data for ClientId ${ClientId}:`, updatedData) // Debugging log
+  const query = `UPDATE ${tab} SET ? WHERE ClientId = ?`
+  pool.query(query, [updatedData, ClientId], (err, result) => {
+    if (err) {
+      console.error(`Error updating data for ${tab}:`, err)
+      res.status(500).json({ error: `Error updating data for ${tab}` })
+      return
+    }
+    res.json({ message: 'Data saved successfully' })
+  })
 })
 
-app.get('/api/audit/:clientId', (req, res) => {
-  res.json(auditData)
+//==========DOUNUT Data Fetch ==================//
+const doughnutData = {
+  labels: ['Red', 'Green', 'Yellow'],
+  datasets: [
+    {
+      data: [300, 50, 100],
+      backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56'],
+      hoverBackgroundColor: ['#FF6384', '#36A2EB', '#FFCE56'],
+    },
+  ],
+}
+app.get('/api/doughnut/:clientId', (req, res) => {
+  // Fetch data for the doughnut chart based on clientId (you can replace this with your actual data fetching logic)
+  // Example: Fetch data from the database based on clientId
+  const clientId = req.params.clientId
+  const doughnutData = fetchDataFromDatabase(clientId)
+
+  // Send the doughnut data as response
+  res.json(doughnutData)
 })
 
-app.get('/api/advisory/:clientId', (req, res) => {
-  res.json(advisoryData)
-})
-
-app.get('/api/yearwork/:clientId', (req, res) => {
-  res.json(yearworkData)
-})
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
