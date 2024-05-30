@@ -29,7 +29,7 @@ const Companies = () => {
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const response = await fetch(`${ENDPOINT}/client`)
+        const response = await fetch(`${ENDPOINT}/clients`)
         const data = await response.json()
         setClients(data)
       } catch (error) {
@@ -106,10 +106,10 @@ const Companies = () => {
           </CTableHead>
           <CTableBody>
             {filteredClients.map((client) => (
-              <CTableRow key={client.Id}>
+              <CTableRow key={client.ID}>
                 <CTableDataCell>{client.Name}</CTableDataCell>
                 <CTableDataCell>{client.Owner}</CTableDataCell>
-                <CTableDataCell>{client.Email}</CTableDataCell>
+                <CTableDataCell>{client.Contact}</CTableDataCell>
                 <CTableDataCell>
                   <CBadge
                     color={
@@ -132,12 +132,12 @@ const Companies = () => {
                   <CButton
                     color="primary"
                     alt="see more"
-                    onClick={() => handleViewClick(client.Id)}
+                    onClick={() => handleViewClick(client.ID)}
                     className="me-2"
                   >
                     <CIcon icon={cilFullscreen} />
                   </CButton>
-                  <CButton color="secondary" alt="edit" onClick={() => handleEditClick(client.Id)}>
+                  <CButton color="secondary" alt="edit" onClick={() => handleEditClick(client.ID)}>
                     <CIcon icon={cilPencil} />
                   </CButton>
                 </CTableDataCell>

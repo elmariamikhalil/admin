@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   CContainer,
   CRow,
@@ -19,6 +19,23 @@ const AddClient = () => {
   const [Email, setEmail] = useState('')
   const [Category, setCategory] = useState('')
   const [Logo, setLogo] = useState(null)
+  const [projects, setProjects] = useState([])
+  const [selectedProject, setSelectedProject] = useState('')
+
+  useEffect(() => {
+    // Fetch projects data when the component mounts
+    fetchProjects()
+  }, [])
+
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/projects')
+      const data = await response.json()
+      setProjects(data)
+    } catch (error) {
+      console.error('Error fetching projects:', error)
+    }
+  }
 
   const handleNameChange = (e) => {
     setName(e.target.value)
@@ -40,18 +57,23 @@ const AddClient = () => {
     setLogo(e.target.files[0])
   }
 
+  const handleProjectChange = (e) => {
+    setSelectedProject(e.target.value)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     const formData = new FormData()
     formData.append('Name', Name)
     formData.append('Owner', Owner)
-    formData.append('Email', Email)
+    formData.append('Contact', Email)
     formData.append('Category', Category)
     formData.append('logo', Logo)
+    formData.append('ProjectID', selectedProject)
 
     try {
-      const response = await fetch('http://localhost:5000/client', {
+      const response = await fetch('http://localhost:5000/addclient', {
         method: 'POST',
         body: formData,
       })
@@ -123,6 +145,22 @@ const AddClient = () => {
                   <option value="Exit Client">Exit Client</option>
                   <option value="On Hold">On Hold</option>
                   <option value="SOW">SOW</option>
+                </CFormSelect>
+              </CCol>
+              <CCol md={6}>
+                <CFormLabel>Project:</CFormLabel>
+                <CFormSelect
+                  value={selectedProject}
+                  onChange={handleProjectChange}
+                  required
+                  id="project"
+                >
+                  <option value="">Select Project</option>
+                  {projects.map((project) => (
+                    <option key={project.ID} value={project.ID}>
+                      {project.Name}
+                    </option>
+                  ))}
                 </CFormSelect>
               </CCol>
               <CCol md={6}>

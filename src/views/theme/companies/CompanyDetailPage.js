@@ -57,7 +57,7 @@ const CompanyDetailPage = () => {
   useEffect(() => {
     const fetchCompanyDetails = async () => {
       try {
-        const response = await fetch(`${ENDPOINT}/client/${clientId}`)
+        const response = await fetch(`${ENDPOINT}/clients/${clientId}`)
         const data = await response.json()
         setClient(data)
         if (data.TeamId) {
@@ -162,7 +162,7 @@ const CompanyDetailPage = () => {
                 <CRow className="align-items-center">
                   <CCol md="6">
                     <CImage
-                      src={`${ENDPOINT}/uploads/${client.Logo}`}
+                      src={`${ENDPOINT}/uploads/${client.logo}`}
                       alt="Client Logo"
                       rounded
                       thumbnail

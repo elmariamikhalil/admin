@@ -27,11 +27,11 @@ const EditCompany = () => {
   useEffect(() => {
     const fetchCompanyDetails = async () => {
       try {
-        const response = await fetch(`${ENDPOINT}/client/${id}`)
+        const response = await fetch(`${ENDPOINT}/clients/${id}`)
         const data = await response.json()
         setName(data.Name)
         setOwner(data.Owner)
-        setEmail(data.Email)
+        setEmail(data.Contact)
         setCategory(data.Category)
       } catch (error) {
         console.error('Error fetching company details:', error)
@@ -67,9 +67,9 @@ const EditCompany = () => {
     const formData = new FormData()
     formData.append('Name', name)
     formData.append('Owner', owner)
-    formData.append('Email', email)
+    formData.append('Contact', email)
     formData.append('Category', category)
-    formData.append('Picture', Picture)
+    formData.append('logo', Picture)
 
     try {
       const response = await fetch(`${ENDPOINT}/editclient/${id}`, {
