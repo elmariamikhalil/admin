@@ -1,4 +1,3 @@
-// SettingsPage.js
 import React, { useState } from 'react'
 import { CCard, CCardBody, CCol, CCardHeader, CRow } from '@coreui/react'
 
@@ -12,20 +11,16 @@ const SettingsPage = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    // Upload logoFile to backend
     try {
       const formData = new FormData()
       formData.append('logo', logoFile)
-      const response = await fetch(`http://localhost:5000/maincompany`, {
+      const response = await fetch(`http://localhost:5000/maincompany/logo`, {
         method: 'POST',
         body: formData,
       })
       if (response.ok) {
-        // Logo updated successfully
-        console.log({ logoFile })
         alert('Logo updated successfully')
       } else {
-        // Handle error
         alert('Failed to update logo')
       }
     } catch (error) {

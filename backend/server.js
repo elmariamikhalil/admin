@@ -43,6 +43,47 @@ const storage = multer.diskStorage({
 })
 const upload = multer({ storage: storage })
 
+app.get('/maincompany', (req, res) => {
+  const sql = 'SELECT Logo FROM maincompany WHERE ID = 1'
+  pool.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching main company logo:', err)
+      return res.status(500).json({ error: 'Failed to fetch main company logo' })
+    }
+    if (results.length > 0) {
+      res.json({ Logo: results[0].Logo })
+    } else {
+      res.status(404).json({ error: 'Main company logo not found' })
+    }
+  })
+})
+
+// Endpoint to update the main company's logo
+app.post('/maincompany/logo', upload.single('logo'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' })
+  }
+
+  const logoFilename = `logo_${Date.now()}${path.extname(req.file.originalname)}`
+  const uploadPath = path.join(__dirname, '../public/uploads', logoFilename)
+
+  fs.rename(req.file.path, uploadPath, (err) => {
+    if (err) {
+      console.error('Error moving file:', err)
+      return res.status(500).json({ error: 'Failed to move file' })
+    }
+
+    const sql = 'UPDATE maincompany SET Logo = ? WHERE ID = 1'
+    pool.query(sql, [logoFilename], (err, result) => {
+      if (err) {
+        console.error('Error updating logo in database:', err)
+        return res.status(500).json({ error: 'Failed to update logo in database' })
+      }
+      res.status(200).json({ message: 'Logo updated successfully' })
+    })
+  })
+})
+
 app.get('/projects', (req, res) => {
   const sql = 'SELECT ID, Name, Logo FROM projects'
   pool.query(sql, (err, result) => {
@@ -113,13 +154,35 @@ app.get('/clients/:ID', (req, res) => {
     }
   })
 })
-
+app.get('/user', (req, res) => {
+  const sql = `
+    SELECT 
+      ID,
+      Username,
+      Name,
+      email,
+      Picture,
+      Role,
+      Position,
+      team
+    FROM 
+      marabesuser
+  `
+  pool.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching users:', err)
+      return res.status(500).json({ error: 'Failed to fetch users' })
+    }
+    res.json(results)
+  })
+})
 // Route for registering a new user
 app.post('/user', (req, res) => {
-  const { email, password, name } = req.body
+  const { email, password, name, teamId, role, position } = req.body
 
-  const sql = 'SELECT * FROM users WHERE email = ?'
-  pool.query(sql, [email], (err, results) => {
+  // Check if user with the same email already exists
+  const checkUserSql = 'SELECT * FROM users WHERE email = ?'
+  pool.query(checkUserSql, [email], (err, results) => {
     if (err) {
       console.error('Error retrieving user:', err)
       return res.status(500).json({ error: 'Internal server error' })
@@ -129,14 +192,17 @@ app.post('/user', (req, res) => {
       return res.status(409).json({ error: 'Email already exists' })
     }
 
+    // Hash the password
     bcrypt.hash(password, 10, (err, hash) => {
       if (err) {
         console.error('Error hashing password:', err)
         return res.status(500).json({ error: 'Failed to register user' })
       }
 
-      const sql = 'INSERT INTO users (email, password, name) VALUES (?, ?, ?)'
-      pool.query(sql, [email, hash, name], (err, result) => {
+      // Insert user into the database with hashed password
+      const insertUserSql =
+        'INSERT INTO users (email, password, name, teamId, role, position) VALUES (?, ?, ?, ?, ?, ?)'
+      pool.query(insertUserSql, [email, hash, name, teamId, role, position], (err, result) => {
         if (err) {
           console.error('Error adding user:', err)
           return res.status(500).json({ error: 'Failed to register user' })
@@ -232,8 +298,8 @@ app.post('/user/authenticate', (req, res) => {
 })
 
 // Route for getting all users
-app.get('/users', (req, res) => {
-  const sql = 'SELECT * FROM users'
+app.get('/api/teams', (req, res) => {
+  const sql = 'SELECT * FROM marabesuser'
   pool.query(sql, (err, result) => {
     if (err) {
       console.error('Error fetching users:', err)
@@ -245,9 +311,9 @@ app.get('/users', (req, res) => {
 })
 
 // Fetch details of a specific user by ID
-app.get('/users/:id', (req, res) => {
+app.get('/api/teams/:id', (req, res) => {
   const userId = req.params.id
-  const sql = 'SELECT * FROM users WHERE id = ?'
+  const sql = 'SELECT * FROM marabesuser WHERE ID = ?'
   pool.query(sql, [userId], (err, result) => {
     if (err) {
       console.error('Error fetching user:', err)

@@ -1,6 +1,5 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { useEffect, useState } from 'react'
 import {
   CCloseButton,
   CImage,
@@ -13,25 +12,21 @@ import {
 import CIcon from '@coreui/icons-react'
 
 import { AppSidebarNav } from './AppSidebarNav'
-
-import { logo } from 'src/assets/brand/logo'
+import navigation from '../_nav'
 import { sygnet } from 'src/assets/brand/sygnet'
 
-// sidebar nav config
-import navigation from '../_nav'
-import { cilAlignCenter } from '@coreui/icons'
-
 const AppSidebar = () => {
-  const [logoUrl, setlogoUrl] = useState('')
+  const [logoUrl, setLogoUrl] = useState('')
   const dispatch = useDispatch()
   const unfoldable = useSelector((state) => state.sidebarUnfoldable)
   const sidebarShow = useSelector((state) => state.sidebarShow)
+
   useEffect(() => {
-    fetch(`http://localhost:5000/maincompany`)
+    fetch('http://localhost:5000/maincompany')
       .then((response) => response.json())
       .then((maincompany) => {
-        const fetchedLogoUrl = maincompany.Logo
-        setlogoUrl(fetchedLogoUrl)
+        const fetchedLogoUrl = `http://localhost:5000/uploads/${maincompany.Logo}`
+        setLogoUrl(fetchedLogoUrl)
       })
       .catch((error) => console.error('Error fetching company data:', error))
   }, [])
@@ -49,8 +44,11 @@ const AppSidebar = () => {
     >
       <CSidebarHeader className="border-bottom">
         <CSidebarBrand to="/">
-          <CImage src={logoUrl} width="auto" height={40} />
-          <CIcon customClassName="sidebar-brand-narrow" icon={sygnet} height={32} />
+          {logoUrl ? (
+            <CImage src={logoUrl} width="auto" height={40} />
+          ) : (
+            <CIcon customClassName="sidebar-brand-narrow" icon={sygnet} height={32} />
+          )}
         </CSidebarBrand>
         <CCloseButton
           className="d-lg-none"

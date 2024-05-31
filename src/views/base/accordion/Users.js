@@ -14,7 +14,7 @@ import {
   CButton,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilFullscreen } from '@coreui/icons'
+import { cilFullscreen, cilUserPlus } from '@coreui/icons'
 
 const ENDPOINT = 'http://localhost:5000'
 
@@ -42,11 +42,15 @@ const Users = () => {
   }
 
   const handleActionClick = (id) => {
-    navigate(`/Base/accordion/EditUser/${id}`)
+    navigate(`/base/accordion/EditUser/${id}`)
+  }
+
+  const handleAddUserClick = () => {
+    navigate(`/base/accordion/AddUser`)
   }
 
   const filteredUsers = users.filter((user) =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()),
+    user.Name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -61,6 +65,9 @@ const Users = () => {
             placeholder="Search"
             style={{ width: '200px' }}
           />
+          <CButton color="success" className="ms-2" onClick={handleAddUserClick}>
+            <CIcon icon={cilUserPlus} /> Add User
+          </CButton>
         </div>
       </CCardHeader>
       <CCardBody>
@@ -68,6 +75,7 @@ const Users = () => {
           <CTableHead>
             <CTableRow>
               <CTableHeaderCell scope="col">ID</CTableHeaderCell>
+              <CTableHeaderCell scope="col">Username</CTableHeaderCell>
               <CTableHeaderCell scope="col">Email</CTableHeaderCell>
               <CTableHeaderCell scope="col">Name</CTableHeaderCell>
               <CTableHeaderCell scope="col">Picture</CTableHeaderCell>
@@ -78,17 +86,18 @@ const Users = () => {
           </CTableHead>
           <CTableBody>
             {filteredUsers.map((user) => (
-              <CTableRow key={user.Id}>
-                <CTableDataCell>{user.Id}</CTableDataCell>
+              <CTableRow key={user.ID}>
+                <CTableDataCell>{user.ID}</CTableDataCell>
+                <CTableDataCell>{user.Username}</CTableDataCell>
                 <CTableDataCell>{user.email}</CTableDataCell>
-                <CTableDataCell>{user.name}</CTableDataCell>
+                <CTableDataCell>{user.Name}</CTableDataCell>
                 <CTableDataCell>
                   <img src={user.Picture} alt="User" style={{ width: '50px', height: '50px' }} />
                 </CTableDataCell>
                 <CTableDataCell>{user.Position}</CTableDataCell>
                 <CTableDataCell>{user.Role}</CTableDataCell>
                 <CTableDataCell>
-                  <CButton color="primary" alt="edit" onClick={() => handleActionClick(user.Id)}>
+                  <CButton color="primary" alt="edit" onClick={() => handleActionClick(user.ID)}>
                     <CIcon icon={cilFullscreen} />
                   </CButton>
                 </CTableDataCell>

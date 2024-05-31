@@ -12,6 +12,7 @@ const Page500 = React.lazy(() => import('./views/pages/page500/Page500'))
 // Base
 const Team = React.lazy(() => import('./views/base/accordion/Team'))
 const EditTeam = React.lazy(() => import('./views/base/accordion/EditTeam'))
+const AddUser = React.lazy(() => import('./views/base/accordion/AddUser'))
 const Users = React.lazy(() => import('./views/base/accordion/Users'))
 const EditUser = React.lazy(() => import('./views/base/accordion/EditUser'))
 const Breadcrumbs = React.lazy(() => import('./views/base/breadcrumbs/Breadcrumbs'))
@@ -83,6 +84,7 @@ const routes = [
   { path: '/base', name: 'Base', element: Cards, exact: true },
   { path: '/base/accordion/Team', name: 'Team', element: Team },
   { path: '/base/accordion/EditTeam/:id', name: 'Edit Team', element: EditTeam },
+  { path: '/base/accordion/AddUser', name: 'Add User', element: AddUser },
   { path: '/base/accordion/Users', name: 'Users', element: Users },
   { path: '/base/accordion/EditUser/:id', name: 'Edit User', element: EditUser },
   { path: '/buttons', name: 'Buttons', element: Buttons, exact: true },

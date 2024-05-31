@@ -77,9 +77,7 @@ const Teams = () => {
             {filteredTeams.map((team) => (
               <CTableRow key={team.team_id}>
                 <CTableDataCell>{team.team_name}</CTableDataCell>
-                <CTableDataCell>
-                  {team.members.map((member) => member.Name).join(', ')}
-                </CTableDataCell>
+                <CTableDataCell>{team.members.join(', ')}</CTableDataCell>
                 <CTableDataCell>
                   <CButton
                     color="primary"
