@@ -1,164 +1,171 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
-  CCard,
-  CCardHeader,
-  CCardBody,
-  CForm,
-  CFormLabel,
-  CFormInput,
-  CFormSelect,
   CButton,
+  CCard,
+  CCardBody,
+  CCardHeader,
+  CForm,
+  CCol,
+  CFormInput,
+  CFormLabel,
+  CFormSelect,
+  CAlert,
 } from '@coreui/react'
+import { cilUserPlus } from '@coreui/icons'
+import CIcon from '@coreui/icons-react'
+
+const ENDPOINT = 'http://localhost:5000'
 
 const AddUser = () => {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [email, setEmail] = useState('')
-  const [name, setName] = useState('')
-  const [position, setPosition] = useState('')
-  const [role, setRole] = useState('')
-  const [teamOptions, setTeamOptions] = useState([])
-  const [selectedTeam, setSelectedTeam] = useState('')
+  const [teams, setTeams] = useState([])
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    name: '',
+    team: '',
+    role: '',
+    position: '',
+    picture: null,
+  })
+  const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
-    fetchTeamOptions()
+    const fetchTeams = async () => {
+      try {
+        const response = await fetch(`${ENDPOINT}/marabesteam`)
+        const data = await response.json()
+        setTeams(data)
+      } catch (error) {
+        console.error('Error fetching teams:', error)
+      }
+    }
+
+    fetchTeams()
   }, [])
 
-  const fetchTeamOptions = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/marabesteam')
-      if (response.ok) {
-        const data = await response.json()
-        setTeamOptions(data.map((team) => ({ value: team.ID, label: team.Name })))
-      } else {
-        console.error('Failed to fetch teams:', response.statusText)
-      }
-    } catch (error) {
-      console.error('Error fetching teams:', error)
+  const handleChange = (e) => {
+    const { name, value, files } = e.target
+    if (files) {
+      setFormData((prevData) => ({
+        ...prevData,
+        [name]: files[0],
+      }))
+    } else {
+      setFormData((prevData) => ({
+        ...prevData,
+        [name]: value,
+      }))
     }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    const form = new FormData()
+    for (const key in formData) {
+      form.append(key, formData[key])
+    }
+
     try {
-      const response = await fetch('http://localhost:5000/user', {
+      const response = await fetch(`${ENDPOINT}/user`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username,
-          password,
-          email,
-          name,
-          position,
-          role,
-          team: selectedTeam,
-        }),
+        body: form,
       })
 
-      if (response.ok) {
-        console.log('User added successfully')
-        // Clear form fields after successful addition
-        setUsername('')
-        setPassword('')
-        setEmail('')
-        setName('')
-        setPosition('')
-        setRole('')
-        setSelectedTeam('')
+      const data = await response.json()
+      if (!response.ok) {
+        setError(data.error)
+        setSuccess(null)
       } else {
-        console.error('Failed to add user:', response.statusText)
+        setError(null)
+        setSuccess(data.message)
+        setTimeout(() => {
+          navigate('/base/accordion/Users')
+        }, 2000)
       }
     } catch (error) {
       console.error('Error adding user:', error)
+      setError('Failed to register user')
+      setSuccess(null)
     }
   }
 
   return (
-    <CCard>
-      <CCardHeader>Add User</CCardHeader>
+    <CCard className="mb-4">
+      <CCardHeader>
+        <h5 className="mb-0">Add User</h5>
+      </CCardHeader>
       <CCardBody>
+        {error && <CAlert color="danger">{error}</CAlert>}
+        {success && <CAlert color="success">{success}</CAlert>}
         <CForm onSubmit={handleSubmit}>
-          <CFormLabel htmlFor="username">Username</CFormLabel>
-          <CFormInput
-            type="text"
-            id="username"
-            placeholder="Enter username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-
-          <CFormLabel htmlFor="password">Password</CFormLabel>
-          <CFormInput
-            type="password"
-            id="password"
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-
-          <CFormLabel htmlFor="email">Email</CFormLabel>
-          <CFormInput
-            type="email"
-            id="email"
-            placeholder="Enter email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-
-          <CFormLabel htmlFor="name">Name</CFormLabel>
-          <CFormInput
-            type="text"
-            id="name"
-            placeholder="Enter name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-
-          <CFormLabel htmlFor="position">Position</CFormLabel>
-          <CFormSelect
-            custom
-            id="position"
-            value={position}
-            onChange={(e) => setPosition(e.target.value)}
-          >
-            <option value="">Select position</option>
-            <option value="Manager">Manager</option>
-            <option value="Developer">Developer</option>
-            <option value="Designer">Designer</option>
-            {/* Add more options as needed */}
-          </CFormSelect>
-
-          <CFormLabel htmlFor="role">Role</CFormLabel>
-          <CFormSelect custom id="role" value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="">Select role</option>
-            <option value="Admin">Admin</option>
-            <option value="User">User</option>
-            {/* Add more options as needed */}
-          </CFormSelect>
-
-          <CFormLabel htmlFor="team">Team</CFormLabel>
-          <CFormSelect
-            custom
-            id="team"
-            value={selectedTeam}
-            onChange={(e) => setSelectedTeam(e.target.value)}
-          >
-            <option value="">Select team</option>
-            {teamOptions.map((team) => (
-              <option key={team.value} value={team.value}>
-                {team.label}
-              </option>
-            ))}
-          </CFormSelect>
+          <CCol>
+            <CFormLabel>Email</CFormLabel>
+            <CFormInput
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+          </CCol>
+          <CCol>
+            <CFormLabel>Password</CFormLabel>
+            <CFormInput
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </CCol>
+          <CCol>
+            <CFormLabel>Name</CFormLabel>
+            <CFormInput
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
+          </CCol>
+          <CCol>
+            <CFormLabel>Team</CFormLabel>
+            <CFormSelect name="team" value={formData.team} onChange={handleChange} required>
+              <option value="">Select Team</option>
+              {teams.map((team) => (
+                <option key={team.ID} value={team.ID}>
+                  {team.Name}
+                </option>
+              ))}
+            </CFormSelect>
+          </CCol>
+          <CCol>
+            <CFormLabel>Role</CFormLabel>
+            <CFormSelect name="role" value={formData.role} onChange={handleChange} required>
+              <option value="">Select Role</option>
+              <option value="Admin">Admin</option>
+              <option value="User">User</option>
+            </CFormSelect>
+          </CCol>
+          <CCol>
+            <CFormLabel>Position</CFormLabel>
+            <CFormSelect name="position" value={formData.position} onChange={handleChange} required>
+              <option value="">Select Position</option>
+              <option value="Manager">Manager</option>
+              <option value="Developer">Developer</option>
+              <option value="Designer">Designer</option>
+            </CFormSelect>
+          </CCol>
+          <CCol>
+            <CFormLabel>Picture</CFormLabel>
+            <CFormInput type="file" name="picture" accept="image/*" onChange={handleChange} />
+          </CCol>
           <CButton type="submit" color="primary">
-            Add User
+            <CIcon icon={cilUserPlus} /> Add User
           </CButton>
         </CForm>
       </CCardBody>

@@ -74,11 +74,9 @@ const Users = () => {
         <CTable hover responsive>
           <CTableHead>
             <CTableRow>
-              <CTableHeaderCell scope="col">ID</CTableHeaderCell>
-              <CTableHeaderCell scope="col">Username</CTableHeaderCell>
+              <CTableHeaderCell scope="col">Picture</CTableHeaderCell>
               <CTableHeaderCell scope="col">Email</CTableHeaderCell>
               <CTableHeaderCell scope="col">Name</CTableHeaderCell>
-              <CTableHeaderCell scope="col">Picture</CTableHeaderCell>
               <CTableHeaderCell scope="col">Position</CTableHeaderCell>
               <CTableHeaderCell scope="col">Role</CTableHeaderCell>
               <CTableHeaderCell scope="col">Action</CTableHeaderCell>
@@ -87,13 +85,15 @@ const Users = () => {
           <CTableBody>
             {filteredUsers.map((user) => (
               <CTableRow key={user.ID}>
-                <CTableDataCell>{user.ID}</CTableDataCell>
-                <CTableDataCell>{user.Username}</CTableDataCell>
+                <CTableDataCell>
+                  <img
+                    src={`${ENDPOINT}/uploads/${user.Picture}`}
+                    alt="User"
+                    style={{ width: '50px', height: '50px', borderRadius: '50%' }}
+                  />
+                </CTableDataCell>
                 <CTableDataCell>{user.email}</CTableDataCell>
                 <CTableDataCell>{user.Name}</CTableDataCell>
-                <CTableDataCell>
-                  <img src={user.Picture} alt="User" style={{ width: '50px', height: '50px' }} />
-                </CTableDataCell>
                 <CTableDataCell>{user.Position}</CTableDataCell>
                 <CTableDataCell>{user.Role}</CTableDataCell>
                 <CTableDataCell>

@@ -12,6 +12,7 @@ const Page500 = React.lazy(() => import('./views/pages/page500/Page500'))
 // Base
 const Team = React.lazy(() => import('./views/base/accordion/Team'))
 const EditTeam = React.lazy(() => import('./views/base/accordion/EditTeam'))
+const CreateTeam = React.lazy(() => import('./views/base/accordion/CreateTeam'))
 const AddUser = React.lazy(() => import('./views/base/accordion/AddUser'))
 const Users = React.lazy(() => import('./views/base/accordion/Users'))
 const EditUser = React.lazy(() => import('./views/base/accordion/EditUser'))
@@ -28,7 +29,11 @@ const Progress = React.lazy(() => import('./views/base/progress/Progress'))
 const Spinners = React.lazy(() => import('./views/base/spinners/Spinners'))
 const Tables = React.lazy(() => import('./views/base/tables/Tables'))
 const Tooltips = React.lazy(() => import('./views/base/tooltips/Tooltips'))
-
+//Projects
+const Projects = React.lazy(() => import('./views/base/projects/Projects'))
+const AddProject = React.lazy(() => import('./views/base/projects/AddProject'))
+const EditProject = React.lazy(() => import('./views/base/projects/EditProject'))
+const ProjectDetailPage = React.lazy(() => import('./views/base/projects/ProjectDetailPage'))
 // Buttons
 const Buttons = React.lazy(() => import('./views/buttons/buttons/Buttons'))
 const ButtonGroups = React.lazy(() => import('./views/buttons/button-groups/ButtonGroups'))
@@ -84,9 +89,18 @@ const routes = [
   { path: '/base', name: 'Base', element: Cards, exact: true },
   { path: '/base/accordion/Team', name: 'Team', element: Team },
   { path: '/base/accordion/EditTeam/:id', name: 'Edit Team', element: EditTeam },
+  { path: '/base/accordion/CreateTeam', name: 'Create Team', element: CreateTeam },
   { path: '/base/accordion/AddUser', name: 'Add User', element: AddUser },
   { path: '/base/accordion/Users', name: 'Users', element: Users },
   { path: '/base/accordion/EditUser/:id', name: 'Edit User', element: EditUser },
+  { path: '/base/projects/Projects', name: 'Projects List', element: Projects },
+  { path: '/base/projects/AddProject', name: 'Add Project', element: AddProject },
+  { path: '/base/projects/EditProject/:id', name: 'Edit Project', element: EditProject },
+  {
+    path: '/base/projects/ProjectDetailPage/:id',
+    name: 'Project Overview',
+    element: ProjectDetailPage,
+  },
   { path: '/buttons', name: 'Buttons', element: Buttons, exact: true },
   { path: '/buttons/buttons', name: 'Buttons', element: Buttons },
   { path: '/buttons/dropdowns', name: 'Dropdowns', element: Dropdowns },

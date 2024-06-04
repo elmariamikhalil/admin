@@ -7,9 +7,7 @@ import {
   CForm,
   CFormSelect,
   CButton,
-  CAvatar,
-  CListGroup,
-  CListGroupItem,
+  CAlert,
 } from '@coreui/react'
 
 const ENDPOINT = 'http://localhost:5000'
@@ -17,17 +15,14 @@ const ENDPOINT = 'http://localhost:5000'
 const AddTeamToClient = () => {
   const [clients, setClients] = useState([])
   const [teams, setTeams] = useState([])
-  const [members, setMembers] = useState([])
-  const [teamMembers, setTeamMembers] = useState([])
   const [selectedClientId, setSelectedClientId] = useState('')
   const [selectedTeamId, setSelectedTeamId] = useState('')
-  const [teamName, setTeamName] = useState('')
-  const [selectedMembers, setSelectedMembers] = useState([])
+  const [assignedTeam, setAssignedTeam] = useState(null)
 
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const response = await fetch(`${ENDPOINT}/client`)
+        const response = await fetch(`${ENDPOINT}/clients`)
         if (response.ok) {
           const data = await response.json()
           setClients(data)
@@ -43,29 +38,9 @@ const AddTeamToClient = () => {
   }, [])
 
   useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        const response = await fetch(`${ENDPOINT}/members`)
-        if (response.ok) {
-          const data = await response.json()
-          setMembers(data)
-        } else {
-          console.error('Failed to fetch members')
-        }
-      } catch (error) {
-        console.error('Error fetching members:', error)
-      }
-    }
-
-    fetchMembers()
-  }, [])
-
-  useEffect(() => {
-    if (!selectedClientId) return
-
     const fetchTeams = async () => {
       try {
-        const response = await fetch(`${ENDPOINT}/clients/${selectedClientId}/teams`)
+        const response = await fetch(`${ENDPOINT}/marabesteam`)
         if (response.ok) {
           const data = await response.json()
           setTeams(data)
@@ -78,99 +53,64 @@ const AddTeamToClient = () => {
     }
 
     fetchTeams()
-  }, [selectedClientId])
+  }, [])
 
   useEffect(() => {
-    if (!selectedTeamId) return
-
-    const fetchTeamMembers = async () => {
+    const fetchAssignedTeam = async () => {
       try {
-        const response = await fetch(`${ENDPOINT}/teams/${selectedTeamId}/members`)
+        if (!selectedClientId) return
+        const response = await fetch(`${ENDPOINT}/clientteam/${selectedClientId}`)
         if (response.ok) {
           const data = await response.json()
-          setTeamMembers(data)
-          setSelectedMembers(data.map((member) => member.Id))
+          if (data && data.TeamID) {
+            setSelectedTeamId(data.TeamID) // Set the selected team to the assigned team
+          } else {
+            setSelectedTeamId('Select Team') // Reset selected team if no team is assigned
+          }
         } else {
-          console.error('Failed to fetch team members')
+          console.error('Failed to fetch assigned team')
         }
       } catch (error) {
-        console.error('Error fetching team members:', error)
+        console.error('Error fetching assigned team:', error)
       }
     }
 
-    fetchTeamMembers()
-  }, [selectedTeamId])
+    fetchAssignedTeam()
+  }, [selectedClientId])
 
   const handleClientChange = (e) => {
     setSelectedClientId(e.target.value)
     setSelectedTeamId('')
-    setTeamName('')
-    setTeamMembers([])
-    setSelectedMembers([])
   }
 
   const handleTeamChange = (e) => {
     setSelectedTeamId(e.target.value)
-    const team = teams.find((team) => team.id === parseInt(e.target.value))
-    setTeamName(team ? team.name : '')
-  }
-
-  const handleTeamNameChange = (e) => {
-    setTeamName(e.target.value)
-  }
-
-  const handleMemberToggle = (memberId) => {
-    if (selectedMembers.includes(memberId)) {
-      setSelectedMembers(selectedMembers.filter((Id) => Id !== memberId))
-    } else {
-      setSelectedMembers([...selectedMembers, memberId])
-    }
+    setAssignedTeam(e.target.value !== 'Select Team' ? e.target.value : null)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     if (selectedTeamId) {
-      // Update existing team
-      const response = await fetch(`${ENDPOINT}/teams/${selectedTeamId}`, {
-        method: 'PUT',
+      // Update existing team - Send a POST request instead of PUT
+      const response = await fetch(`${ENDPOINT}/clientteam/${selectedClientId}`, {
+        method: 'POST', // Change method to POST
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: teamName, memberIds: selectedMembers }),
+        body: JSON.stringify({ TeamID: selectedTeamId }), // Use selectedTeamId
       })
 
       if (response.ok) {
-        alert('Team updated successfully')
+        alert('Team assigned to client successfully')
+        setAssignedTeam(selectedTeamId)
       } else {
-        alert('Failed to update team')
+        alert('Failed to assign team to client')
       }
     } else {
-      // Add new team
-      const response = await fetch(`${ENDPOINT}/teams`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: teamName, clientId: selectedClientId }),
-      })
-      const teamData = await response.json()
-
-      // Assign members to team
-      await fetch(`${ENDPOINT}/teams/${teamData.id}/members`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ memberIds: selectedMembers }),
-      })
-
-      alert('Team and members added successfully')
+      // Handle if no team is selected
+      alert('Please select a team')
     }
-
-    // Refresh teams list
-    setSelectedClientId('')
-    setSelectedClientId(selectedClientId)
   }
 
   return (
@@ -187,89 +127,43 @@ const AddTeamToClient = () => {
             >
               <option value="">Select Client</option>
               {clients.map((client) => (
-                <option key={client.Id} value={client.Id}>
+                <option key={client.ID} value={client.ID}>
+                  {' '}
                   {client.Name}
                 </option>
               ))}
             </CFormSelect>
 
+            {assignedTeam !== null && assignedTeam !== 'Select Team' ? (
+              <div className="mb-3">
+                {teams.map((team) => (
+                  <CAlert color="info">Team assigned to this client: {team.Name}</CAlert>
+                ))}
+              </div>
+            ) : (
+              <div className="mb-3">
+                <CAlert color="warning">No team is assigned to this client</CAlert>
+              </div>
+            )}
+
             <CFormSelect className="mb-3" value={selectedTeamId} onChange={handleTeamChange}>
-              <option value="">Select Team (or create new)</option>
+              <option value="">Select Team</option>
               {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
+                <option key={team.ID} value={team.ID}>
+                  {' '}
+                  {team.Name}
                 </option>
               ))}
             </CFormSelect>
 
-            <div className="mb-3">
-              <label>Team Name:</label>
-              <input
-                type="text"
-                className="form-control"
-                value={teamName}
-                onChange={handleTeamNameChange}
-                required
-              />
-            </div>
-
-            <div className="mb-3">
-              <label>Members:</label>
-              <div className="d-flex flex-wrap">
-                {members.map((member) => (
-                  <CAvatar
-                    key={member.Id}
-                    textColor="white"
-                    color={selectedMembers.includes(member.Id) ? 'primary' : 'secondary'}
-                    className="me-2 mb-2"
-                    onClick={() => handleMemberToggle(member.Id)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {extractInitials(member.name)}
-                  </CAvatar>
-                ))}
-              </div>
-            </div>
-
             <CButton type="submit" color="primary">
-              {selectedTeamId ? 'Update Team' : 'Add Team'}
+              Assign Team to Client
             </CButton>
           </CForm>
-
-          {selectedTeamId && teamMembers.length > 0 && (
-            <>
-              <h5 className="mt-4">Team Members</h5>
-              <CListGroup>
-                {teamMembers.map((member) => (
-                  <CListGroupItem
-                    key={member.Id}
-                    className="d-flex justify-content-between align-items-center"
-                  >
-                    <div className="d-flex align-items-center">
-                      <CAvatar textColor="white" color="primary" className="me-3">
-                        {extractInitials(member.name)}
-                      </CAvatar>
-                      {member.name}
-                    </div>
-                    <CButton color="danger" size="sm" onClick={() => handleRemoveMember(member.Id)}>
-                      Remove
-                    </CButton>
-                  </CListGroupItem>
-                ))}
-              </CListGroup>
-            </>
-          )}
         </CCardBody>
       </CCard>
     </CContainer>
   )
-}
-
-const extractInitials = (name) => {
-  return name
-    .split(' ')
-    .map((word) => word[0])
-    .join('')
 }
 
 export default AddTeamToClient

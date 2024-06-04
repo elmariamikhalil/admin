@@ -17,6 +17,7 @@ const EditUser = () => {
   const { id } = useParams()
   const [user, setUser] = useState({})
   const [error, setError] = useState('')
+  const [picture, setPicture] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -26,11 +27,7 @@ const EditUser = () => {
         if (!response.ok) {
           throw new Error('Failed to fetch user details')
         }
-        const text = await response.text()
-        if (!text) {
-          throw new Error('Empty response received')
-        }
-        const data = JSON.parse(text)
+        const data = await response.json()
         setUser(data)
       } catch (error) {
         console.error('Error fetching user:', error)
@@ -43,26 +40,37 @@ const EditUser = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setUser({ ...user, [name]: value })
+    setUser({ ...user, [name]: value }) // Changed 'Name' to 'name', 'Position' to 'position', and 'Role' to 'role'
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    setPicture(file)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     try {
+      const formData = new FormData()
+      formData.append('email', user.email)
+      formData.append('name', user.name)
+      formData.append('position', user.position)
+      formData.append('role', user.role)
+      if (picture) {
+        formData.append('picture', picture)
+      }
+
       const response = await fetch(`${ENDPOINT}/user/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(user),
+        body: formData,
       })
 
       if (!response.ok) {
         throw new Error('Failed to update user')
       }
 
-      navigate('/users')
+      navigate('/base/accordion/users')
     } catch (error) {
       console.error('Error updating user:', error)
       setError('Failed to update user. Please try again.')
@@ -90,26 +98,28 @@ const EditUser = () => {
             <CFormInput
               type="text"
               name="name"
-              value={user.name || ''}
+              value={user.name || ''} // Changed 'Name' to 'name'
               onChange={handleInputChange}
               required
             />
           </div>
           <div>
             <CFormLabel>Picture</CFormLabel>
-            <CFormInput
-              type="text"
-              name="picture"
-              value={user.picture || ''}
-              onChange={handleInputChange}
-            />
+            <CFormInput type="file" name="picture" onChange={handleFileChange} />
+            {user.picture && (
+              <img
+                src={`${ENDPOINT}/uploads/${user.picture}`}
+                alt="User"
+                style={{ width: '100px', height: '100px' }}
+              />
+            )}
           </div>
           <div>
             <CFormLabel>Position</CFormLabel>
             <CFormInput
               type="text"
               name="position"
-              value={user.position || ''}
+              value={user.position || ''} // Changed 'Position' to 'position'
               onChange={handleInputChange}
             />
           </div>
@@ -118,7 +128,7 @@ const EditUser = () => {
             <CFormInput
               type="text"
               name="role"
-              value={user.role || ''}
+              value={user.role} // Changed 'Role' to 'role'
               onChange={handleInputChange}
             />
           </div>

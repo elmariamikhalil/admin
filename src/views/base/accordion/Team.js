@@ -11,10 +11,12 @@ import {
   CTableDataCell,
   CTableBody,
   CButton,
+  CAvatar,
   CFormInput,
+  CTooltip,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilFullscreen } from '@coreui/icons'
+import { cilFullscreen, cilPlus } from '@coreui/icons'
 
 const ENDPOINT = 'http://localhost:5000'
 
@@ -45,8 +47,12 @@ const Teams = () => {
     navigate(`/base/accordion/EditTeam/${teamId}`)
   }
 
+  const handleCreateTeam = () => {
+    navigate('/base/accordion/CreateTeam')
+  }
+
   const filteredTeams = teams.filter((team) =>
-    team.team_name.toLowerCase().includes(searchTerm.toLowerCase()),
+    team.Name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -61,6 +67,10 @@ const Teams = () => {
             placeholder="Search"
             style={{ width: '200px' }}
           />
+          <CButton color="primary" className="ml-2" onClick={handleCreateTeam}>
+            <CIcon icon={cilPlus} className="mr-1" />
+            Create Team
+          </CButton>
         </div>
       </CCardHeader>
 
@@ -75,24 +85,58 @@ const Teams = () => {
           </CTableHead>
           <CTableBody>
             {filteredTeams.map((team) => (
-              <CTableRow key={team.team_id}>
-                <CTableDataCell>{team.team_name}</CTableDataCell>
-                <CTableDataCell>{team.members.join(', ')}</CTableDataCell>
-                <CTableDataCell>
-                  <CButton
-                    color="primary"
-                    alt="see more"
-                    onClick={() => handleActionClick(team.team_id)}
-                  >
-                    <CIcon icon={cilFullscreen} />
-                  </CButton>
-                </CTableDataCell>
-              </CTableRow>
+              <TeamRow key={team.ID} team={team} />
             ))}
           </CTableBody>
         </CTable>
       </CCardBody>
     </CCard>
+  )
+}
+
+const TeamRow = ({ team }) => {
+  const [members, setMembers] = useState([])
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const response = await fetch(`${ENDPOINT}/api/teams/${team.ID}/members`)
+        const data = await response.json()
+        setMembers(data)
+      } catch (error) {
+        console.error('Error fetching team members:', error)
+      }
+    }
+
+    fetchMembers()
+  }, [team.ID])
+
+  const handleActionClick = (teamId) => {
+    navigate(`/base/accordion/EditTeam/${teamId}`)
+  }
+
+  return (
+    <CTableRow>
+      <CTableDataCell>{team.Name}</CTableDataCell>
+      <CTableDataCell>
+        {members.map((member) => (
+          <CTooltip key={member.ID} content={`${member.Name} - ${member.Position}`} placement="top">
+            <CAvatar
+              src={`${ENDPOINT}/uploads/${member.Picture}`}
+              alt={member.Name}
+              width="30"
+              height="30"
+              className="mr-2"
+            />
+          </CTooltip>
+        ))}
+      </CTableDataCell>
+      <CTableDataCell>
+        <CButton color="primary" alt="see more" onClick={() => handleActionClick(team.ID)}>
+          <CIcon icon={cilFullscreen} />
+        </CButton>
+      </CTableDataCell>
+    </CTableRow>
   )
 }
 

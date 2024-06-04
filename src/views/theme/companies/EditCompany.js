@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import {
   CContainer,
+  CRow,
+  CCol,
   CCard,
   CCardHeader,
   CCardBody,
@@ -10,36 +12,46 @@ import {
   CFormSelect,
   CButton,
   CFormLabel,
-  CCol,
 } from '@coreui/react'
 
-const ENDPOINT = 'http://localhost:5000' // Adjusted the endpoint to match the server.js configuration
-
-const EditCompany = () => {
+const EditClient = () => {
   const { id } = useParams()
-  const [name, setName] = useState('')
-  const [owner, setOwner] = useState('')
-  const [email, setEmail] = useState('')
-  const [category, setCategory] = useState('')
-  const [Picture, setLogo] = useState(null)
-  const navigate = useNavigate()
+  const [Name, setName] = useState('')
+  const [Owner, setOwner] = useState('')
+  const [Email, setEmail] = useState('')
+  const [Category, setCategory] = useState('')
+  const [Logo, setLogo] = useState(null)
+  const [projects, setProjects] = useState([])
+  const [selectedProject, setSelectedProject] = useState('')
 
   useEffect(() => {
-    const fetchCompanyDetails = async () => {
-      try {
-        const response = await fetch(`${ENDPOINT}/clients/${id}`)
-        const data = await response.json()
-        setName(data.Name)
-        setOwner(data.Owner)
-        setEmail(data.Contact)
-        setCategory(data.Category)
-      } catch (error) {
-        console.error('Error fetching company details:', error)
-      }
-    }
-
-    fetchCompanyDetails()
+    fetchClientDetails()
+    fetchProjects()
   }, [id])
+
+  const fetchClientDetails = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/clients/${id}`)
+      const data = await response.json()
+      setName(data.Name)
+      setOwner(data.Owner)
+      setEmail(data.Contact)
+      setCategory(data.Category)
+      setSelectedProject(data.ProjectID)
+    } catch (error) {
+      console.error('Error fetching client details:', error)
+    }
+  }
+
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/projects')
+      const data = await response.json()
+      setProjects(data)
+    } catch (error) {
+      console.error('Error fetching projects:', error)
+    }
+  }
 
   const handleNameChange = (e) => {
     setName(e.target.value)
@@ -61,76 +73,70 @@ const EditCompany = () => {
     setLogo(e.target.files[0])
   }
 
+  const handleProjectChange = (e) => {
+    setSelectedProject(e.target.value)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
 
     const formData = new FormData()
-    formData.append('Name', name)
-    formData.append('Owner', owner)
-    formData.append('Contact', email)
-    formData.append('Category', category)
-    formData.append('logo', Picture)
+    formData.append('Name', Name)
+    formData.append('Owner', Owner)
+    formData.append('Contact', Email)
+    formData.append('Category', Category)
+    formData.append('logo', Logo)
+    formData.append('ProjectID', selectedProject)
 
     try {
-      const response = await fetch(`${ENDPOINT}/editclient/${id}`, {
+      const response = await fetch(`http://localhost:5000/editclient/${id}`, {
         method: 'PUT',
         body: formData,
       })
       if (response.ok) {
-        // Company updated successfully
-        alert('Company updated successfully')
-        navigate('/theme/companies/Companies') // Navigate to a desired route after update
+        alert('Client updated successfully')
       } else {
-        // Handle error
-        alert('Failed to update company')
+        alert('Failed to update client')
       }
     } catch (error) {
-      console.error('Error updating company:', error)
-      alert('An error occurred while updating company')
+      console.error('Error updating client:', error)
+      alert('An error occurred while updating client')
     }
   }
 
   return (
     <CContainer>
       <CCard className="mb-4">
-        <CCardHeader>Edit Company</CCardHeader>
+        <CCardHeader>Edit Client</CCardHeader>
         <CCardBody>
           <CForm onSubmit={handleSubmit} className="row g-3">
             <CCol md={6}>
               <CFormLabel htmlFor="name">Name:</CFormLabel>
-              <CFormInput
-                type="text"
-                value={name}
-                onChange={handleNameChange}
-                required
-                id="name"
-                autoComplete="off"
-              />
+              <CFormInput type="text" id="name" value={Name} onChange={handleNameChange} required />
             </CCol>
             <CCol md={6}>
               <CFormLabel htmlFor="owner">Owner:</CFormLabel>
               <CFormInput
                 type="text"
-                value={owner}
+                id="owner"
+                value={Owner}
                 onChange={handleOwnerChange}
                 required
-                id="owner"
               />
             </CCol>
             <CCol md={6}>
               <CFormLabel htmlFor="email">Email:</CFormLabel>
               <CFormInput
                 type="email"
-                value={email}
+                id="email"
+                value={Email}
                 onChange={handleEmailChange}
                 required
-                id="email"
-                autoComplete="email"
               />
             </CCol>
             <CCol md={6}>
               <CFormLabel htmlFor="category">Category:</CFormLabel>
-              <CFormSelect value={category} onChange={handleCategoryChange} required id="category">
+              <CFormSelect id="category" value={Category} onChange={handleCategoryChange} required>
                 <option value="">Select Category</option>
                 <option value="Key Client">Key Client</option>
                 <option value="Client">Client</option>
@@ -142,12 +148,30 @@ const EditCompany = () => {
               </CFormSelect>
             </CCol>
             <CCol md={6}>
-              <CFormLabel htmlFor="Picture">Logo:</CFormLabel>
-              <CFormInput type="file" accept="image/*" onChange={handleLogoChange} id="Picture" />
+              <CFormLabel htmlFor="project">Project:</CFormLabel>
+              <CFormSelect
+                id="project"
+                value={selectedProject}
+                onChange={handleProjectChange}
+                required
+              >
+                <option value="">Select Project</option>
+                {projects.map((project) => (
+                  <option key={project.ID} value={project.ID}>
+                    {project.Name}
+                  </option>
+                ))}
+              </CFormSelect>
             </CCol>
-            <CButton color="primary" type="submit">
-              Update Company
-            </CButton>
+            <CCol md={6}>
+              <CFormLabel htmlFor="logo">Logo:</CFormLabel>
+              <CFormInput type="file" id="logo" accept="image/*" onChange={handleLogoChange} />
+            </CCol>
+            <CCol xs={12}>
+              <CButton color="primary" type="submit">
+                Update Client
+              </CButton>
+            </CCol>
           </CForm>
         </CCardBody>
       </CCard>
@@ -155,4 +179,4 @@ const EditCompany = () => {
   )
 }
 
-export default EditCompany
+export default EditClient

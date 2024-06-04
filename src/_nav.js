@@ -32,6 +32,22 @@ const _nav = [
   },
   {
     component: CNavTitle,
+    name: 'Projects',
+  },
+  {
+    component: CNavItem,
+    name: 'Projects List',
+    to: '/base/projects/Projects',
+    icon: <CIcon icon={cilList} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'Add Project',
+    to: '/base/projects/AddProject',
+    icon: <CIcon icon={cilLibraryAdd} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavTitle,
     name: 'Companies',
   },
   {
