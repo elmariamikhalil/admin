@@ -967,6 +967,90 @@ app.get('/projects/:id/hours', async (req, res) => {
   }
 })
 
+//===========================CLeint Details DATA===================================//
+app.get('/api/teams/:teamId', (req, res) => {
+  const teamId = req.params.teamId
+  pool.query('SELECT Name FROM marabesteam WHERE ID = ?', [teamId], (error, teamResults) => {
+    if (error) {
+      console.error('Error fetching team details:', error)
+      return res.status(500).json({ error: 'Failed to fetch team details' })
+    }
+    // Fetching team members
+    pool.query(
+      'SELECT mu.ID, mu.Name, mu.email, mu.Picture, mu.Role, mu.Position FROM marabesuser mu INNER JOIN marabesuser_teams mut ON mu.ID = mut.userId WHERE mut.teamId = ?',
+      [teamId],
+      (memberError, memberResults) => {
+        if (memberError) {
+          console.error('Error fetching team members:', memberError)
+          return res.status(500).json({ error: 'Failed to fetch team members' })
+        }
+        res.json({ name: teamResults[0].Name, members: memberResults })
+      },
+    )
+  })
+})
+
+const fetchTabData = (tableName) => (req, res) => {
+  const clientId = req.params.clientId
+  pool.query(`SELECT * FROM ${tableName} WHERE ClientID = ?`, [clientId], (error, results) => {
+    if (error) {
+      console.error(`Error fetching data for ${tableName}:`, error)
+      return res.status(500).json({ error: `Failed to fetch data for ${tableName}` })
+    }
+    res.json(results[0] || {})
+  })
+}
+
+const saveTabData = (tableName) => (req, res) => {
+  const clientId = req.params.clientId
+  const data = req.body
+  data.ClientID = clientId
+
+  pool.query(`SELECT * FROM ${tableName} WHERE ClientID = ?`, [clientId], (error, results) => {
+    if (error) {
+      console.error(`Error fetching data for ${tableName}:`, error)
+      return res.status(500).json({ error: `Failed to fetch data for ${tableName}` })
+    }
+
+    if (results.length > 0) {
+      pool.query(
+        `UPDATE ${tableName} SET ? WHERE ClientID = ?`,
+        [data, clientId],
+        (updateError) => {
+          if (updateError) {
+            console.error(`Error updating data for ${tableName}:`, updateError)
+            return res.status(500).json({ error: `Failed to update data for ${tableName}` })
+          }
+          res.json({ success: true, data })
+        },
+      )
+    } else {
+      pool.query(`INSERT INTO ${tableName} SET ?`, data, (insertError) => {
+        if (insertError) {
+          console.error(`Error inserting data into ${tableName}:`, insertError)
+          return res.status(500).json({ error: `Failed to insert data into ${tableName}` })
+        }
+        res.json({ success: true, data })
+      })
+    }
+  })
+}
+
+app.get('/api/administration/:clientId', fetchTabData('administration'))
+app.post('/api/administration/:clientId', saveTabData('administration'))
+
+app.get('/api/backoffice/:clientId', fetchTabData('backoffice'))
+app.post('/api/backoffice/:clientId', saveTabData('backoffice'))
+
+app.get('/api/audit/:clientId', fetchTabData('audit'))
+app.post('/api/audit/:clientId', saveTabData('audit'))
+
+app.get('/api/advisory/:clientId', fetchTabData('advisory'))
+app.post('/api/advisory/:clientId', saveTabData('advisory'))
+
+app.get('/api/yearwork/:clientId', fetchTabData('yearwork'))
+app.post('/api/yearwork/:clientId', saveTabData('yearwork'))
+
 // Start the server
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {

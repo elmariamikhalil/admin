@@ -78,20 +78,18 @@ const CompanyDetailPage = () => {
     fetchDoughnutData()
   }, [clientId])
 
-  const fetchTeamDetails = async (teamId) => {
+  const fetchTeamMembers = async (teamId) => {
     try {
       const response = await fetch(`${ENDPOINT}/api/teams/${teamId}`)
       const data = await response.json()
       if (response.ok) {
-        // Extract the team members from the response
         const { members } = data
-        // Now you have the team members, update the state
         setTeamMembers(members)
       } else {
-        console.error('Error fetching team details:', data.error)
+        console.error('Error fetching team members:', data.error)
       }
     } catch (error) {
-      console.error('Error fetching team details:', error)
+      console.error('Error fetching team members:', error)
     }
   }
 
@@ -99,7 +97,7 @@ const CompanyDetailPage = () => {
     try {
       const response = await fetch(`${ENDPOINT}/api/${tab}/${clientId}`)
       const data = await response.json()
-      console.log(`Data for ${tab}:`, data) // Log to console
+      console.log(`Data for ${tab}:`, data)
       setTabData(data)
     } catch (error) {
       console.error(`Error fetching data for ${tab}:`, error)
@@ -131,7 +129,7 @@ const CompanyDetailPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(tabData),
+        body: JSON.stringify({ ...tabData, ClientID: clientId }),
       })
 
       const result = await response.json()
@@ -198,15 +196,28 @@ const CompanyDetailPage = () => {
             <CCard>
               <CCardHeader>Team Members</CCardHeader>
               <CCardBody>
-                {teamMembers.map((member, index) => (
-                  <div key={index} className="mb-2">
-                    <CAvatar src={`${ENDPOINT}/uploads/${member.Picture}`} className="me-2" />
-                    <div>
-                      <strong>{member.Name}</strong>
-                      <p>{member.Position}</p>
+                <div className="team-list">
+                  {teamMembers.map((team, index) => (
+                    <div key={index} className="team">
+                      <div className="team-name">{team.Name}</div>
+                      <div className="avatar-stack">
+                        {team.members.map((member, memberIndex) => (
+                          <div
+                            key={memberIndex}
+                            className="avatar"
+                            style={{ zIndex: team.members.length - memberIndex }}
+                          >
+                            <img src={`${ENDPOINT}/uploads/${member.Picture}`} alt={member.Name} />
+                            <div className="avatar-hover">
+                              <strong>{member.Name}</strong>
+                              <p>{member.Position}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </CCardBody>
             </CCard>
           </CCol>
@@ -248,7 +259,7 @@ const CompanyDetailPage = () => {
                       <CTableDataCell>
                         <label style={{ marginRight: '10px' }}>{option}</label>
                         <CFormSelect
-                          value={tabData[option]}
+                          value={tabData[option] || 'N/A'}
                           onChange={(event) => handleSelectChange(event, option)}
                           style={{ width: '100%' }}
                         >

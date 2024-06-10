@@ -17,6 +17,7 @@ import {
   CTableDataCell,
   CProgress,
 } from '@coreui/react'
+import { Avatar } from 'tabler-react' // Import Avatar component from Tabler UI
 
 const ENDPOINT = 'http://localhost:5000' // Your server URL
 
@@ -97,11 +98,25 @@ const ProjectDetailPage = () => {
           <CCard>
             <CCardHeader>Team</CCardHeader>
             <CCardBody>
-              {team.map((member) => (
-                <div key={member.ID}>
-                  <p>{member.Name}</p>
-                </div>
-              ))}
+              <div class="avatars-stack">
+                {team.map((member) => (
+                  <div
+                    key={member.ID}
+                    class="avatar"
+                    content={`${member.Name} - ${member.Position}`}
+                  >
+                    <CImage
+                      src={`${ENDPOINT}/uploads/${member.Picture}`}
+                      class="avatar-img"
+                      alt={member.email}
+                      width={50}
+                      height={50}
+                    />
+                  </div>
+                ))}
+                {/* Add the condition to show the remaining count */}
+                {team.length > 3 && <div class="avatar bg-secondary">+{team.length - 3}</div>}
+              </div>
             </CCardBody>
           </CCard>
         </CCol>
