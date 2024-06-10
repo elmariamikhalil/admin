@@ -7,7 +7,7 @@ const path = require('path')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const fs = require('fs')
-
+const bodyParser = require('body-parser')
 const app = express()
 
 // MySQL database connection
@@ -17,6 +17,9 @@ const pool = mysql.createPool({
   user: 'u291024398_marabes',
   password: 'Marabes2024@',
   database: 'u291024398_marabes',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 })
 
 // JWT Secret Key
@@ -25,6 +28,7 @@ const JWT_SECRET =
 
 // Middleware
 app.use(cors())
+app.use(bodyParser.json())
 app.use(express.json()) // for parsing application/json
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads'))) // Serve uploaded files
 
@@ -55,6 +59,39 @@ app.get('/maincompany', (req, res) => {
     } else {
       res.status(404).json({ error: 'Main company logo not found' })
     }
+  })
+})
+//COUNTING THE DATA FOR STATS
+app.get('/projects/count', (req, res) => {
+  const sql = 'SELECT COUNT(*) AS count FROM projects'
+  pool.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching projects count:', err)
+      return res.status(500).json({ error: 'Internal server error' })
+    }
+    res.json(results[0])
+  })
+})
+
+app.get('/clients/count', (req, res) => {
+  const sql = 'SELECT COUNT(*) AS count FROM clients'
+  pool.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching clients count:', err)
+      return res.status(500).json({ error: 'Internal server error' })
+    }
+    res.json(results[0])
+  })
+})
+
+app.get('/teams/count', (req, res) => {
+  const sql = 'SELECT COUNT(*) AS count FROM marabesteam'
+  pool.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching teams count:', err)
+      return res.status(500).json({ error: 'Internal server error' })
+    }
+    res.json(results[0])
   })
 })
 
@@ -106,6 +143,80 @@ const insertClientToDB = (Name, Owner, Contact, Category, logo, ProjectID, res) 
     res.status(201).json({ message: 'Client added successfully' })
   })
 }
+// Handle GET request to fetch project details
+app.get('/api/projects/:projectId', (req, res) => {
+  const projectId = req.params.projectId
+  const sql = 'SELECT * FROM projects WHERE ID = ?'
+  pool.query(sql, [projectId], (err, results) => {
+    if (err) {
+      console.error('Error fetching project:', err)
+      return res.status(500).json({ error: 'Failed to fetch project' })
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Project not found' })
+    }
+    res.json(results[0])
+  })
+})
+
+// Handle GET request to fetch client details
+app.get('/api/projects/:projectId/clients', (req, res) => {
+  const projectId = req.params.projectId
+  const sql = 'SELECT ID, Name, Contact, Category FROM clients WHERE ProjectID = ?'
+  pool.query(sql, [projectId], (err, results) => {
+    if (err) {
+      console.error('Error fetching clients:', err)
+      return res.status(500).json({ error: 'Failed to fetch clients' })
+    }
+    res.json(results)
+  })
+})
+{
+  /* to be revised and fixed later*/
+}
+app.get('/api/projects/:projectId/team', (req, res) => {
+  const projectId = req.params.projectId
+
+  // Log the incoming projectId to verify the request
+  console.log('Fetching team for project ID:', projectId)
+
+  const sql = `
+  SELECT mu.ID, mu.Name, mu.Picture, mu.Position
+  FROM marabesuser mu
+  JOIN marabesuser_teams mut ON mu.ID = mut.userId
+  JOIN marabesteam mt ON mut.teamId = mt.ID
+  JOIN clientteam ct ON mt.ID = ct.TeamID
+  JOIN clients c ON ct.ClientID = c.ID
+  WHERE c.ID = ?
+  `
+
+  pool.query(sql, [projectId], (err, results) => {
+    if (err) {
+      console.error('Error fetching team:', err)
+      return res.status(500).json({ error: 'Failed to fetch team' })
+    }
+
+    // Log the results from the query
+    console.log('Team results:', results)
+
+    res.json(results)
+  })
+})
+// Handle GET request to fetch hours details
+/*app.get('/api/projects/:projectId/hours', (req, res) => {
+  const projectId = req.params.projectId
+  const sql = 'SELECT hoursSigned, fulfilledHours FROM project_hours WHERE ProjectID = ?'
+  pool.query(sql, [projectId], (err, results) => {
+    if (err) {
+      console.error('Error fetching hours details:', err)
+      return res.status(500).json({ error: 'Failed to fetch hours details' })
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Hours details not found' })
+    }
+    res.json(results[0])
+  })
+})*/
 app.post('/addclient', upload.single('logo'), (req, res) => {
   const { Name, Owner, Contact, Category, ProjectID } = req.body
   const logoFilename = req.file ? `logo_${Date.now()}${path.extname(req.file.originalname)}` : null
@@ -162,8 +273,7 @@ app.get('/user', (req, res) => {
       email,
       Picture,
       Role,
-      Position,
-      team
+      Position
     FROM 
       marabesuser
   `
@@ -214,7 +324,7 @@ app.post('/user', upload.single('picture'), (req, res) => {
         }
 
         const insertUserSql =
-          'INSERT INTO marabesuser (email, password, Name, team, Role, Position, Picture) VALUES (?, ?, ?, ?, ?, ?, ?)'
+          'INSERT INTO marabesuser (email, password, Name, Role, Position, Picture) VALUES (?, ?, ?, ?, ?, ?, ?)'
         pool.query(
           insertUserSql,
           [email, hash, name, team, role, position, picture],
@@ -230,7 +340,23 @@ app.post('/user', upload.single('picture'), (req, res) => {
     })
   }
 })
-app.get('/user/:id', (req, res) => {
+app.post('/api/users', async (req, res) => {
+  const { name, picture, position } = req.body
+
+  try {
+    const connection = await pool.getConnection()
+    const sql = 'INSERT INTO marabesuser (Name, Picture, Position) VALUES (?, ?, ?)'
+    await connection.query(sql, [name, picture, position])
+
+    connection.release()
+    res.status(201).json({ message: 'User added successfully' })
+  } catch (err) {
+    console.error('Error adding user:', err)
+    res.status(500).json({ error: 'Failed to add user' })
+  }
+})
+
+app.get('/api/user/:id', (req, res) => {
   const { id } = req.params
 
   const sql = 'SELECT * FROM marabesuser WHERE ID = ?'
@@ -272,7 +398,7 @@ const updateUserDetails = (userId, details, res) => {
   })
 }
 // Endpoint to update user details
-app.put('/user/:ID', upload.single('picture'), (req, res) => {
+app.put('/api/user/:ID', upload.single('picture'), (req, res) => {
   const userID = req.params.ID
   const { email, name, position, role } = req.body
   let pictureFilename = null
@@ -345,33 +471,99 @@ app.put('/editclient/:ID', upload.single('logo'), (req, res) => {
     updateClientDetails(clientId, { Name, Owner, Contact, Category, ProjectID }, res)
   }
 })
+// Route for registering a new user
+app.post('/api/add/user', upload.single('picture'), (req, res) => {
+  const { email, password, name, team, role, position } = req.body
+  const picture = req.file ? `picture_${Date.now()}-${req.file.originalname}` : null
 
-// Route for authenticating a user
-app.post('/user/authenticate', (req, res) => {
-  const { email, password } = req.body
+  if (req.file) {
+    const picturePath = req.file.path
+    const uploadPath = path.join(__dirname, '../public/uploads', picture)
 
-  const sql = 'SELECT * FROM users WHERE email = ?'
-  pool.query(sql, [email], (err, results) => {
-    if (err) {
-      console.error('Error retrieving user:', err)
-      return res.status(500).json({ error: 'Internal server error' })
-    }
+    fs.rename(picturePath, uploadPath, (err) => {
+      if (err) {
+        console.error('Error moving file:', err)
+        return res.status(500).json({ error: 'Failed to move file' })
+      }
+      registerUser()
+    })
+  } else {
+    registerUser()
+  }
 
-    if (results.length === 0) {
-      return res.status(401).json({ error: 'Invalid email or password' })
-    }
-
-    bcrypt.compare(password, results[0].password, (err, result) => {
-      if (err || !result) {
-        return res.status(401).json({ error: 'Invalid email or password' })
+  function registerUser() {
+    const checkUserSql = 'SELECT * FROM marabesuser WHERE email = ?'
+    pool.query(checkUserSql, [email], (err, results) => {
+      if (err) {
+        console.error('Error retrieving user:', err)
+        return res.status(500).json({ error: 'Internal server error' })
       }
 
-      const token = jwt.sign({ id: results[0].id, email: results[0].email }, JWT_SECRET, {
-        expiresIn: '1h',
-      })
+      if (results.length > 0) {
+        return res.status(409).json({ error: 'Email already exists' })
+      }
 
-      res.json({ token })
+      bcrypt.hash(password, 10, (err, hash) => {
+        if (err) {
+          console.error('Error hashing password:', err)
+          return res.status(500).json({ error: 'Failed to register user' })
+        }
+
+        const insertUserSql =
+          'INSERT INTO marabesuser (email, password, Name, Role, Position, Picture) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        pool.query(
+          insertUserSql,
+          [email, hash, name, team, role, position, picture],
+          (err, result) => {
+            if (err) {
+              console.error('Error adding user:', err)
+              return res.status(500).json({ error: 'Failed to register user' })
+            }
+            res.status(201).json({ message: 'User registered successfully' })
+          },
+        )
+      })
     })
+  }
+})
+// Route for authenticating a user
+app.post('/user/authenticate', (req, res) => {
+  const { email, Password } = req.body
+
+  // Your authentication logic (e.g., check database)
+  const sql = `
+    SELECT 
+      ID, Name, Role
+    FROM 
+      marabesuser
+    WHERE 
+      email = ? AND Password = ? 
+  `
+  pool.query(sql, [email, Password], (err, results) => {
+    if (err) {
+      console.error('Error during authentication:', err)
+      return res.status(500).json({ error: 'Internal server error' })
+    }
+    if (results.length > 0) {
+      const user = results[0]
+      const token = jwt.sign({ id: user.ID, role: user.Role }, JWT_SECRET, { expiresIn: '30m' })
+      res.json({ ...user, token }) // Return user details and token if authenticated
+    } else {
+      res.status(401).json({ error: 'Invalid email or password' })
+    }
+  })
+})
+app.post('/user/verifyToken', (req, res) => {
+  const token = req.headers['authorization']?.split(' ')[1]
+  if (!token) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  jwt.verify(token, secretKey, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+    res.json({ id: decoded.id, role: decoded.role })
   })
 })
 
@@ -388,25 +580,70 @@ app.get('/api/teams', (req, res) => {
   })
 })
 
-// Fetch details of a specific user by ID
+// Fetch details of a specific team by ID
 app.get('/api/teams/:ID', (req, res) => {
-  const userId = req.params.ID
+  const teamId = req.params.ID
   const sql = 'SELECT * FROM marabesteam WHERE ID = ?'
-  pool.query(sql, [userId], (err, result) => {
+  pool.query(sql, [teamId], (err, result) => {
     if (err) {
-      console.error('Error fetching user:', err)
+      console.error('Error fetching team:', err)
       res.status(500).json({ error: 'Server error' })
     } else if (result.length === 0) {
-      res.status(404).json({ error: 'User not found' })
+      res.status(404).json({ error: 'Team not found' })
     } else {
       res.json(result[0])
     }
   })
 })
+
+app.put('/api/teams/:ID', (req, res) => {
+  const teamId = req.params.ID
+  const { name, members } = req.body
+
+  // Ensure members is an array of IDs
+  if (!Array.isArray(members) || members.some((member) => typeof member !== 'number')) {
+    return res.status(400).json({ error: 'Invalid members format' })
+  }
+
+  // Update team name
+  const updateTeamQuery = 'UPDATE marabesteam SET Name = ? WHERE ID = ?'
+  pool.query(updateTeamQuery, [name, teamId], (err, result) => {
+    if (err) {
+      console.error('Error updating team:', err)
+      return res.status(500).json({ error: 'Failed to update team name' })
+    }
+
+    // Delete old team members
+    const deleteMembersQuery = 'DELETE FROM marabesuser_teams WHERE TeamID = ?'
+    pool.query(deleteMembersQuery, [teamId], (err, result) => {
+      if (err) {
+        console.error('Error deleting old team members:', err)
+        return res.status(500).json({ error: 'Failed to update team members' })
+      }
+
+      // Insert new team members
+      const insertMembersQuery = 'INSERT INTO marabesuser_teams (TeamID, UserID) VALUES ?'
+      const values = members.map((userID) => [teamId, userID])
+      pool.query(insertMembersQuery, [values], (err, result) => {
+        if (err) {
+          console.error('Error inserting new team members:', err)
+          return res.status(500).json({ error: 'Failed to update team members' })
+        }
+
+        res.status(200).json({ message: 'Team updated successfully' })
+      })
+    })
+  })
+})
 // Fetch team members based on team ID
 app.get('/api/teams/:ID/members', (req, res) => {
   const teamId = req.params.ID
-  let sql = `SELECT ID, Name, Picture, Position FROM marabesuser WHERE team = ?`
+  const sql = `
+    SELECT marabesuser.ID, marabesuser.Name, marabesuser.Picture, marabesuser.Position 
+    FROM marabesuser_teams 
+    JOIN marabesuser ON marabesuser_teams.userId = marabesuser.ID 
+    WHERE marabesuser_teams.teamId = ?
+  `
   pool.query(sql, [teamId], (err, results) => {
     if (err) {
       console.error('Error fetching team members:', err)
@@ -415,18 +652,31 @@ app.get('/api/teams/:ID/members', (req, res) => {
     res.json(results)
   })
 })
-// Fetch team associated with the client if exists
+
+// Fetch team along with project details associated with the client if exists
 app.get('/clientteam/:clientId', (req, res) => {
   const clientId = req.params.clientId
-  const sqlSelect = 'SELECT TeamID FROM clientteam WHERE ClientID = ?'
-  pool.query(sqlSelect, [clientId], (err, result) => {
+  // SQL query to select team details along with the project associated with the client
+  const sql = `
+    SELECT mt.ID AS TeamID, mt.Name AS TeamName,
+           pr.ID AS ProjectID, pr.Name AS ProjectName, pr.Logo AS ProjectLogo
+    FROM clientteam AS ct
+    JOIN marabesteam AS mt ON ct.TeamID = mt.ID
+    LEFT JOIN clients AS cl ON ct.ClientID = cl.ID
+    LEFT JOIN projects AS pr ON cl.ProjectID = pr.ID
+    WHERE cl.ID = ?;
+  `
+
+  pool.query(sql, [clientId], (err, results) => {
     if (err) {
       console.error('Error fetching client team:', err)
       return res.status(500).json({ error: 'Failed to fetch client team' })
     } else {
-      if (result.length > 0) {
-        res.json({ TeamID: result[0].TeamID })
+      if (results.length > 0) {
+        // Return the complete details of team and associated project
+        res.json(results[0])
       } else {
+        // No team associated with the client
         res.status(404).json({ error: 'Client team not found' })
       }
     }
@@ -485,21 +735,6 @@ app.delete('/clients/:id', (req, res) => {
   })
 })
 
-// Route to add a new Marabes Team member
-app.post('/marabesteam', (req, res) => {
-  const { name, role, contact } = req.body
-
-  const sql = 'INSERT INTO marabesteam (name, role, contact) VALUES (?, ?, ?)'
-  pool.query(sql, [name, role, contact], (err, result) => {
-    if (err) {
-      console.error('Error adding team member:', err)
-      res.status(500).json({ error: 'Server error' })
-    } else {
-      res.status(201).json({ message: 'Team member added successfully' })
-    }
-  })
-})
-
 // Route to get all Marabes Team members
 app.get('/marabesteam', (req, res) => {
   const sql = 'SELECT * FROM marabesteam'
@@ -512,7 +747,44 @@ app.get('/marabesteam', (req, res) => {
     }
   })
 })
+app.post('/marabesteam', (req, res) => {
+  const { teamName } = req.body
 
+  if (!teamName) {
+    return res.status(400).json({ error: 'Team name is required' })
+  }
+
+  const sql = 'INSERT INTO marabesteam (Name) VALUES (?)'
+  pool.query(sql, [teamName], (err, result) => {
+    if (err) {
+      console.error('Error adding team:', err)
+      res.status(500).json({ error: 'Server error', details: err.message })
+    } else {
+      res.status(201).json({ id: result.insertId, message: 'Team added successfully' })
+    }
+  })
+})
+app.post('/marabesteam/:id/members', (req, res) => {
+  const teamId = req.params.id
+  const { memberIds } = req.body
+
+  if (!Array.isArray(memberIds)) {
+    return res.status(400).json({ error: 'memberIds must be an array' })
+  }
+
+  // Create an array of arrays, where each sub-array is a pair of teamId and memberId
+  const values = memberIds.map((memberId) => [teamId, memberId])
+
+  const sql = 'INSERT INTO marabesuser_teams (teamId, userId) VALUES ?'
+  pool.query(sql, [values], (err, result) => {
+    if (err) {
+      console.error('Error adding members to team:', err)
+      res.status(500).json({ error: 'Server error', details: err.message })
+    } else {
+      res.json({ message: 'Members added to team successfully' })
+    }
+  })
+})
 //=====================PROJECTS==========================//
 // Get all projects
 app.get('/projects', (req, res) => {
@@ -593,6 +865,69 @@ app.delete('/projects/:id', (req, res) => {
       res.json({ message: 'Project deleted successfully' })
     } else {
       res.status(404).json({ error: 'Project not found' })
+    }
+  })
+})
+
+// Route for fetching all tasks
+app.get('/tasks', (req, res) => {
+  const sql = 'SELECT * FROM tasks'
+  pool.query(sql, (err, result) => {
+    if (err) {
+      console.error('Error fetching tasks:', err)
+      res.status(500).send('Internal Server Error')
+    } else {
+      res.json(result)
+    }
+  })
+})
+
+// Route for adding a new task
+app.post('/tasks', (req, res) => {
+  const { title, description, status, assignedTo, projectId } = req.body
+  const sql =
+    'INSERT INTO tasks (Title, Description, Status, AssignedTo, ProjectID) VALUES (?, ?, ?, ?, ?)'
+  pool.query(sql, [title, description, status, assignedTo, projectId], (err, result) => {
+    if (err) {
+      console.error('Error adding task:', err)
+      return res.status(500).json({ error: 'Failed to add task' })
+    }
+    res.status(201).json({ message: 'Task added successfully', taskId: result.insertId })
+  })
+})
+
+// Route for updating a task by ID
+app.put('/tasks/:id', (req, res) => {
+  const { id } = req.params
+  const { title, description, status, assignedTo, projectId } = req.body
+  const sql =
+    'UPDATE tasks SET Title = ?, Description = ?, Status = ?, AssignedTo = ?, ProjectID = ? WHERE ID = ?'
+  pool.query(sql, [title, description, status, assignedTo, projectId, id], (err, result) => {
+    if (err) {
+      console.error('Error updating task:', err)
+      return res.status(500).json({ error: 'Failed to update task' })
+    }
+    if (result.affectedRows > 0) {
+      res.json({ message: 'Task updated successfully' })
+    } else {
+      res.status(404).json({ error: 'Task not found' })
+    }
+  })
+})
+
+// Route for deleting a task by ID
+app.delete('/tasks/:id', (req, res) => {
+  const { id } = req.params
+  const sql = 'DELETE FROM tasks WHERE ID = ?'
+  pool.query(sql, [id], (err, result) => {
+    if (err) {
+      console.error('Error deleting task:', err)
+      return res.status(500).json({ error: 'Failed to delete task' })
+    }
+    if (result.affectedRows > 0) {
+      res.json({ message: 'Task deleted successfully' })
+    } else {
+      res.status(404).json({ error: 'Task not found' })
     }
   })
 })

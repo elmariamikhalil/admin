@@ -33,19 +33,6 @@ const tabOptions = {
 
 const enumValues = ['N/A', 'O', 'DN', 'W', 'P', 'R', 'D', 'A', 'C']
 
-// Doughnut chart data
-let percentageO = 0
-const doughnutData = {
-  labels: ['O', 'Others'],
-  datasets: [
-    {
-      data: [percentageO, 100 - percentageO],
-      backgroundColor: ['#FF6384', '#36A2EB'],
-      hoverBackgroundColor: ['#FF6384', '#36A2EB'],
-    },
-  ],
-}
-
 const CompanyDetailPage = () => {
   const { clientId } = useParams()
   const [client, setClient] = useState(null)
@@ -60,8 +47,8 @@ const CompanyDetailPage = () => {
         const response = await fetch(`${ENDPOINT}/clients/${clientId}`)
         const data = await response.json()
         setClient(data)
-        if (data.TeamId) {
-          fetchTeamMembers(data.TeamId)
+        if (data.TeamID) {
+          fetchTeamMembers(data.TeamID)
         }
       } catch (error) {
         console.error('Error fetching company details:', error)
@@ -76,6 +63,7 @@ const CompanyDetailPage = () => {
       fetchTabData(activeTab)
     }
   }, [client, activeTab])
+
   useEffect(() => {
     const fetchDoughnutData = async () => {
       try {
@@ -89,13 +77,21 @@ const CompanyDetailPage = () => {
 
     fetchDoughnutData()
   }, [clientId])
-  const fetchTeamMembers = async (teamId) => {
+
+  const fetchTeamDetails = async (teamId) => {
     try {
       const response = await fetch(`${ENDPOINT}/api/teams/${teamId}`)
       const data = await response.json()
-      setTeamMembers(data.members)
+      if (response.ok) {
+        // Extract the team members from the response
+        const { members } = data
+        // Now you have the team members, update the state
+        setTeamMembers(members)
+      } else {
+        console.error('Error fetching team details:', data.error)
+      }
     } catch (error) {
-      console.error('Error fetching team members:', error)
+      console.error('Error fetching team details:', error)
     }
   }
 
@@ -103,7 +99,7 @@ const CompanyDetailPage = () => {
     try {
       const response = await fetch(`${ENDPOINT}/api/${tab}/${clientId}`)
       const data = await response.json()
-      console.log(`Data for ${tab}:`, data) // Add this line for logging
+      console.log(`Data for ${tab}:`, data) // Log to console
       setTabData(data)
     } catch (error) {
       console.error(`Error fetching data for ${tab}:`, error)
@@ -113,7 +109,7 @@ const CompanyDetailPage = () => {
   const extractInitials = (name) => {
     return name
       .split(' ')
-      .map((word) => word[0])
+      .map((n) => n[0])
       .join('')
   }
 
@@ -202,12 +198,13 @@ const CompanyDetailPage = () => {
             <CCard>
               <CCardHeader>Team Members</CCardHeader>
               <CCardBody>
-                {teamMembers.map((team, index) => (
+                {teamMembers.map((member, index) => (
                   <div key={index} className="mb-2">
-                    <CAvatar color="primary" textColor="white" className="me-2">
-                      {extractInitials(team.Name)}
-                    </CAvatar>
-                    {team.Name}
+                    <CAvatar src={`${ENDPOINT}/uploads/${member.Picture}`} className="me-2" />
+                    <div>
+                      <strong>{member.Name}</strong>
+                      <p>{member.Position}</p>
+                    </div>
                   </div>
                 ))}
               </CCardBody>

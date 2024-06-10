@@ -33,7 +33,7 @@ const AddUsers = () => {
     // Send formData to the server to add the user to the database
     // You can use fetch or axios to make a POST request to your backend API
     // Example:
-    fetch('http://localhost:5000/user', {
+    fetch('http://localhost:5000/api/add/user', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -9,7 +9,9 @@ import {
   CFormLabel,
   CButton,
   CAlert,
+  CAvatar,
 } from '@coreui/react'
+import Select from 'react-select'
 
 const ENDPOINT = 'http://localhost:5000'
 
@@ -19,25 +21,38 @@ const EditTeam = () => {
     name: '',
     members: [],
   })
-  const [newMemberEmail, setNewMemberEmail] = useState('')
+  const [allMembers, setAllMembers] = useState([])
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
     const fetchTeam = async () => {
       try {
-        const response = await fetch(`${ENDPOINT}/api/teams/${id}`)
-        if (!response.ok) {
+        const teamResponse = await fetch(`${ENDPOINT}/api/teams/${id}`)
+        if (!teamResponse.ok) {
           throw new Error('Failed to fetch team details')
         }
-        const data = await response.json()
-        setTeam(data)
+        const teamData = await teamResponse.json()
+        setTeam((prevTeam) => ({ ...prevTeam, name: teamData.Name }))
+
+        const membersResponse = await fetch(`${ENDPOINT}/api/teams/${id}/members`)
+        if (!membersResponse.ok) {
+          throw new Error('Failed to fetch team members')
+        }
+        const membersData = await membersResponse.json()
+        setTeam((prevTeam) => ({ ...prevTeam, members: membersData.map((member) => member.ID) }))
+
+        const allMembersResponse = await fetch(`${ENDPOINT}/user`)
+        if (!allMembersResponse.ok) {
+          throw new Error('Failed to fetch all members')
+        }
+        const allMembersData = await allMembersResponse.json()
+        setAllMembers(allMembersData)
       } catch (error) {
-        console.error('Error fetching team:', error)
+        console.error('Error fetching team details:', error)
         setError('Failed to fetch team details. Please try again.')
       }
     }
-
     fetchTeam()
   }, [id])
 
@@ -46,20 +61,25 @@ const EditTeam = () => {
     setTeam({ ...team, [name]: value })
   }
 
-  const handleMemberChange = (e) => {
-    setNewMemberEmail(e.target.value)
+  const handleMemberChange = (selectedOptions) => {
+    const selectedMembers = selectedOptions.map((option) => option.value)
+    setTeam({ ...team, members: selectedMembers })
   }
 
-  const addMember = () => {
-    setTeam({
-      ...team,
-      members: [...team.members, { email: newMemberEmail, Name: '', Position: '', Role: '' }],
-    })
-    setNewMemberEmail('')
+  const removeMember = (index) => {
+    const updatedMembers = [...team.members]
+    updatedMembers.splice(index, 1)
+    setTeam({ ...team, members: updatedMembers })
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    console.log('Submitting team data:', team) // Debug log
+
+    const modifiedTeam = {
+      ...team,
+      members: team.members.map(Number), // Convert member IDs to numbers
+    }
 
     try {
       const response = await fetch(`${ENDPOINT}/api/teams/${id}`, {
@@ -67,11 +87,12 @@ const EditTeam = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(team),
+        body: JSON.stringify(modifiedTeam),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to update team')
+        const errorDetails = await response.text()
+        throw new Error(`Failed to update team: ${errorDetails}`)
       }
 
       navigate('/base/accordion/Team')
@@ -99,20 +120,44 @@ const EditTeam = () => {
           </div>
           <div>
             <CFormLabel>Members</CFormLabel>
-            <ul>
-              {team.members.map((member, index) => (
-                <li key={index}>{member.email}</li>
-              ))}
-            </ul>
-            <CFormInput
-              type="email"
-              value={newMemberEmail}
+            {team.members && team.members.length > 0 ? (
+              <ul>
+                {team.members.map((memberId, index) => {
+                  const member = allMembers.find((m) => m.ID === memberId)
+                  return (
+                    <div key={memberId}>
+                      {member && (
+                        <>
+                          <CAvatar src={`${ENDPOINT}/uploads/${member.Picture}`} />
+                          <p>Name: {member.Name}</p>
+                        </>
+                      )}
+                      <CButton type="button" onClick={() => removeMember(index)} color="danger">
+                        Remove
+                      </CButton>
+                    </div>
+                  )
+                })}
+              </ul>
+            ) : (
+              <p>No members added</p>
+            )}
+            <Select
+              isMulti
+              options={
+                allMembers
+                  ? allMembers.map((member) => ({
+                      value: member.ID,
+                      label: member.Name,
+                    }))
+                  : []
+              }
+              value={team.members.map((memberId) => {
+                const member = allMembers.find((m) => m.ID === memberId)
+                return member ? { value: member.ID, label: member.Name } : null
+              })}
               onChange={handleMemberChange}
-              placeholder="Add member by email"
             />
-            <CButton type="button" onClick={addMember}>
-              Add Member
-            </CButton>
           </div>
           <CButton type="submit" color="primary">
             Save Changes

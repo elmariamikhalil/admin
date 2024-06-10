@@ -96,6 +96,7 @@ const Teams = () => {
 
 const TeamRow = ({ team }) => {
   const [members, setMembers] = useState([])
+  const navigate = useNavigate() // Add this line to get the navigate function
 
   useEffect(() => {
     const fetchMembers = async () => {

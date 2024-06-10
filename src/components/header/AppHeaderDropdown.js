@@ -21,26 +21,36 @@ import {
   cilUser,
 } from '@coreui/icons'
 import CIcon from '@coreui/icons-react'
-
-import avatar8 from './../../assets/images/avatars/8.jpg'
+const ENDPOINT = 'http://localhost:5000' // Your server URL
 
 const AppHeaderDropdown = () => {
   const [pictureUrl, setPictureUrl] = useState('')
+
   useEffect(() => {
-    fetch(`http://localhost:5000/user`)
-      .then((response) => response.json())
-      .then((user) => {
-        const pictureUrl = user.Picture
-        setPictureUrl(pictureUrl)
-        // Use pictureUrl as needed
-      })
-      .catch((error) => console.error('Error fetching user data:', error))
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/user`)
+        const userData = await response.json()
+        if (response.ok) {
+          // Assuming there's only one user returned
+          const user = userData[0]
+          const pictureUrl = user.Picture
+          setPictureUrl(pictureUrl)
+        } else {
+          console.error('Error fetching user data:', userData.error)
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error)
+      }
+    }
+
+    fetchUserData()
   }, [])
 
   return (
     <CDropdown variant="nav-item">
       <CDropdownToggle placement="bottom-end" className="py-0 pe-0" caret={false}>
-        <CAvatar src={pictureUrl} size="md" />
+        <CAvatar src={`${ENDPOINT}/uploads/${pictureUrl}`} size="md" />
       </CDropdownToggle>
       <CDropdownMenu className="pt-0" placement="bottom-end">
         <CDropdownHeader className="bg-body-secondary fw-semibold mb-2">Account</CDropdownHeader>

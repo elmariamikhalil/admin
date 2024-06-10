@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import axios from 'axios'
 import { useParams } from 'react-router-dom'
 import {
   CCard,
@@ -36,7 +37,7 @@ const ProjectDetailPage = () => {
 
   const fetchProject = async (projectId) => {
     try {
-      const response = await fetch(`${ENDPOINT}/projects/${projectId}`)
+      const response = await fetch(`${ENDPOINT}/api/projects/${projectId}`)
       const data = await response.json()
       setProject(data)
     } catch (error) {
@@ -46,8 +47,9 @@ const ProjectDetailPage = () => {
 
   const fetchTeam = async (projectId) => {
     try {
-      const response = await fetch(`${ENDPOINT}/projects/${projectId}/team`)
+      const response = await fetch(`${ENDPOINT}/api/projects/${projectId}/team`)
       const data = await response.json()
+      console.log('Team Data:', data) // Add this line
       setTeam(data)
     } catch (error) {
       console.error('Error fetching team:', error)
@@ -56,9 +58,8 @@ const ProjectDetailPage = () => {
 
   const fetchClients = async (projectId) => {
     try {
-      const response = await fetch(`${ENDPOINT}/projects/${projectId}/clients`)
-      const data = await response.json()
-      setClients(data)
+      const response = await axios.get(`${ENDPOINT}/api/projects/${projectId}/clients`)
+      setClients(response.data)
     } catch (error) {
       console.error('Error fetching clients:', error)
     }
@@ -66,7 +67,7 @@ const ProjectDetailPage = () => {
 
   const fetchHoursDetails = async (projectId) => {
     try {
-      const response = await fetch(`${ENDPOINT}/projects/${projectId}/hours`)
+      const response = await fetch(`${ENDPOINT}/api/projects/${projectId}/hours`)
       const data = await response.json()
       setHoursSigned(data.hoursSigned)
       setFulfilledHours(data.fulfilledHours)
@@ -84,7 +85,12 @@ const ProjectDetailPage = () => {
             <CCardBody>
               <h5>{project.Name}</h5>
               {project.Logo && (
-                <CImage src={`${ENDPOINT}/uploads/${project.Logo}`} alt="Project Logo" fluid />
+                <CImage
+                  src={`${ENDPOINT}/uploads/${project.Logo}`}
+                  width={150}
+                  alt="Project Logo"
+                  fluid
+                />
               )}
             </CCardBody>
           </CCard>
@@ -93,7 +99,7 @@ const ProjectDetailPage = () => {
             <CCardBody>
               {team.map((member) => (
                 <div key={member.ID}>
-                  <p>{member.name}</p>
+                  <p>{member.Name}</p>
                 </div>
               ))}
             </CCardBody>
@@ -118,7 +124,24 @@ const ProjectDetailPage = () => {
                       <CTableHeaderCell>{client.ID}</CTableHeaderCell>
                       <CTableDataCell>{client.Name}</CTableDataCell>
                       <CTableDataCell>{client.Contact}</CTableDataCell>
-                      <CTableDataCell>{client.Category}</CTableDataCell>
+                      <CTableDataCell>
+                        <CBadge
+                          color={
+                            client.Category === 'Key Client'
+                              ? 'success'
+                              : client.Category === 'Client'
+                                ? 'info'
+                                : client.Category === 'Exit Client'
+                                  ? 'danger'
+                                  : client.Category === 'On Hold'
+                                    ? 'warning'
+                                    : 'primary'
+                          }
+                          shape="rounded-pill"
+                        >
+                          {client.Category}
+                        </CBadge>
+                      </CTableDataCell>
                     </CTableRow>
                   ))}
                 </CTableBody>

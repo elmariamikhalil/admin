@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 
 import {
@@ -16,6 +16,11 @@ import CIcon from '@coreui/icons-react'
 import { cilArrowBottom, cilArrowTop, cilOptions } from '@coreui/icons'
 
 const WidgetsDropdown = (props) => {
+  const [projectsCount, setProjectsCount] = useState(0)
+  const [clientsCount, setClientsCount] = useState(0)
+  const [teamsCount, setTeamsCount] = useState(0)
+  const [error, setError] = useState('')
+
   const widgetChartRef1 = useRef(null)
   const widgetChartRef2 = useRef(null)
 
@@ -37,6 +42,29 @@ const WidgetsDropdown = (props) => {
     })
   }, [widgetChartRef1, widgetChartRef2])
 
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const projectsResponse = await fetch('http://localhost:5000/projects/count')
+        const projectsData = await projectsResponse.json()
+        setProjectsCount(projectsData.count)
+
+        const clientsResponse = await fetch('http://localhost:5000/clients/count')
+        const clientsData = await clientsResponse.json()
+        setClientsCount(clientsData.count)
+
+        const teamsResponse = await fetch('http://localhost:5000/teams/count')
+        const teamsData = await teamsResponse.json()
+        setTeamsCount(teamsData.count)
+      } catch (err) {
+        console.error('Error fetching counts:', err)
+        setError('An error occurred while fetching data.')
+      }
+    }
+
+    fetchCounts()
+  }, [])
+
   return (
     <CRow className={props.className} xs={{ gutter: 4 }}>
       <CCol sm={6} xl={4} xxl={3}>
@@ -44,7 +72,7 @@ const WidgetsDropdown = (props) => {
           color="primary"
           value={
             <>
-              3{' '}
+              {projectsCount}{' '}
               <span className="fs-6 fw-normal">
                 (1 <CIcon icon={cilArrowTop} />)
               </span>
@@ -134,7 +162,7 @@ const WidgetsDropdown = (props) => {
           color="info"
           value={
             <>
-              1500{' '}
+              {clientsCount}{' '}
               <span className="fs-6 fw-normal">
                 (20.9% <CIcon icon={cilArrowTop} />)
               </span>
@@ -223,7 +251,7 @@ const WidgetsDropdown = (props) => {
           color="warning"
           value={
             <>
-              38{' '}
+              {teamsCount}{' '}
               <span className="fs-6 fw-normal">
                 (15% <CIcon icon={cilArrowTop} />)
               </span>

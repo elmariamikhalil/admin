@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import axios from 'axios'
+import { useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import {
   CButton,
@@ -13,17 +13,18 @@ import {
   CRow,
   CAlert,
 } from '@coreui/react'
+
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const navigate = useNavigate()
+  const dispatch = useDispatch()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      // Send a request to the server to authenticate the user
       const response = await fetch(`http://localhost:5000/user/authenticate`, {
         method: 'POST',
         headers: {
@@ -32,32 +33,26 @@ const Login = () => {
         body: JSON.stringify({ email, password }),
       })
 
-      // Check if the request was successful
       if (response.ok) {
-        // If successful, parse the response and extract the authentication token
         const data = await response.json()
         const authToken = data.token
-        // Store the authentication token in local storage or session storage
         localStorage.setItem('authToken', authToken)
 
-        // Redirect the user to the dashboard or any other protected route
+        // Dispatch an action to update the Redux store
+        dispatch({ type: 'LOGIN_SUCCESS', payload: data })
 
-        // Redirect the user based on their role
-        const userRole = data.role
+        const userRole = data.Role
         if (userRole === 'Admin') {
           navigate('/')
         } else {
-          navigate('/user')
+          alert('You do not have access to this application.')
+          navigate('/login')
         }
 
-        // Show success message
         setSuccess(true)
-        // Clear error message
         setError('')
       } else {
-        // If authentication fails, display an error message
         setError('Invalid email or password')
-        // Clear success message
         setSuccess(false)
       }
     } catch (error) {
@@ -94,9 +89,7 @@ const Login = () => {
                       required
                     />
                   </div>
-                  {/* Error message */}
-                  {error && <CAlert color="danger">Failed to login</CAlert>}
-                  {/* Success message */}
+                  {error && <CAlert color="danger">{error}</CAlert>}
                   {success && <CAlert color="success">Login successful!</CAlert>}
                   <CButton type="submit" color="primary">
                     Login

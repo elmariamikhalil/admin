@@ -15,7 +15,13 @@ const ENDPOINT = 'http://localhost:5000'
 
 const EditUser = () => {
   const { id } = useParams()
-  const [user, setUser] = useState({})
+  const [user, setUser] = useState({
+    email: '',
+    name: '',
+    position: '',
+    role: '',
+    picture: '',
+  })
   const [error, setError] = useState('')
   const [picture, setPicture] = useState(null)
   const navigate = useNavigate()
@@ -23,12 +29,18 @@ const EditUser = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch(`${ENDPOINT}/user/${id}`)
+        const response = await fetch(`${ENDPOINT}/api/user/${id}`)
         if (!response.ok) {
           throw new Error('Failed to fetch user details')
         }
         const data = await response.json()
-        setUser(data)
+        setUser({
+          email: data.email || '',
+          name: data.Name || '',
+          position: data.Position || '',
+          role: data.Role || '',
+          picture: data.Picture || '',
+        })
       } catch (error) {
         console.error('Error fetching user:', error)
         setError('Failed to fetch user details. Please try again.')
@@ -40,7 +52,7 @@ const EditUser = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setUser({ ...user, [name]: value }) // Changed 'Name' to 'name', 'Position' to 'position', and 'Role' to 'role'
+    setUser({ ...user, [name]: value })
   }
 
   const handleFileChange = (e) => {
@@ -61,7 +73,7 @@ const EditUser = () => {
         formData.append('picture', picture)
       }
 
-      const response = await fetch(`${ENDPOINT}/user/${id}`, {
+      const response = await fetch(`${ENDPOINT}/api/user/${id}`, {
         method: 'PUT',
         body: formData,
       })
@@ -88,7 +100,7 @@ const EditUser = () => {
             <CFormInput
               type="email"
               name="email"
-              value={user.email || ''}
+              value={user.email}
               onChange={handleInputChange}
               required
             />
@@ -98,7 +110,7 @@ const EditUser = () => {
             <CFormInput
               type="text"
               name="name"
-              value={user.name || ''} // Changed 'Name' to 'name'
+              value={user.name}
               onChange={handleInputChange}
               required
             />
@@ -119,18 +131,13 @@ const EditUser = () => {
             <CFormInput
               type="text"
               name="position"
-              value={user.position || ''} // Changed 'Position' to 'position'
+              value={user.position}
               onChange={handleInputChange}
             />
           </div>
           <div>
             <CFormLabel>Role</CFormLabel>
-            <CFormInput
-              type="text"
-              name="role"
-              value={user.role} // Changed 'Role' to 'role'
-              onChange={handleInputChange}
-            />
+            <CFormInput type="text" name="role" value={user.role} onChange={handleInputChange} />
           </div>
           <CButton type="submit" color="primary">
             Save Changes

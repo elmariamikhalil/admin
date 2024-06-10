@@ -11,10 +11,8 @@ import {
   CButton,
   CCol,
   CFormLabel,
-  CListGroup,
-  CListGroupItem,
-  CFormCheck,
 } from '@coreui/react'
+import Select, { components } from 'react-select'
 
 const ENDPOINT = 'http://localhost:5000'
 
@@ -22,8 +20,9 @@ const CreateTeam = () => {
   const [teamName, setTeamName] = useState('')
   const [clients, setClients] = useState([])
   const [selectedClientId, setSelectedClientId] = useState('')
-  const [members, setMembers] = useState([])
+  const [users, setUsers] = useState([])
   const [selectedMembers, setSelectedMembers] = useState([])
+
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -45,22 +44,46 @@ const CreateTeam = () => {
   }, [])
 
   useEffect(() => {
-    const fetchMembers = async () => {
+    const fetchUsers = async () => {
       try {
         const response = await fetch(`${ENDPOINT}/user`)
         if (response.ok) {
           const data = await response.json()
-          setMembers(data)
+          const groupedData = groupUsersByPosition(data)
+          setUsers(groupedData)
         } else {
-          console.error('Failed to fetch members')
+          console.error('Failed to fetch users')
         }
       } catch (error) {
-        console.error('Error fetching members:', error)
+        console.error('Error fetching users:', error)
       }
     }
 
-    fetchMembers()
+    fetchUsers()
   }, [])
+
+  const groupUsersByPosition = (users) => {
+    const groups = users.reduce((groups, user) => {
+      const group = groups[user.Position] || { label: user.Position, options: [] }
+      group.options.push({
+        value: user.ID,
+        label: (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <img
+              src={`${ENDPOINT}/uploads/${user.Picture}`}
+              alt={user.Name}
+              style={{ width: 30, height: 30, borderRadius: '50%', marginRight: 10 }}
+            />
+            {user.Name}
+          </div>
+        ),
+      })
+      groups[user.Position] = group
+      return groups
+    }, {})
+
+    return Object.values(groups) // Convert the grouped object into an array
+  }
 
   const handleClientChange = (e) => {
     setSelectedClientId(e.target.value)
@@ -70,12 +93,8 @@ const CreateTeam = () => {
     setTeamName(e.target.value)
   }
 
-  const handleMemberToggle = (memberId) => {
-    if (selectedMembers.includes(memberId)) {
-      setSelectedMembers(selectedMembers.filter((id) => id !== memberId))
-    } else {
-      setSelectedMembers([...selectedMembers, memberId])
-    }
+  const handleMemberChange = (selectedOptions) => {
+    setSelectedMembers(selectedOptions.map((option) => option.value))
   }
 
   const handleSubmit = async (e) => {
@@ -92,7 +111,7 @@ const CreateTeam = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: teamName, clientId: selectedClientId }),
+        body: JSON.stringify({ teamName: teamName, clientId: selectedClientId }),
       })
 
       if (!response.ok) {
@@ -110,13 +129,12 @@ const CreateTeam = () => {
       })
 
       alert('Team created successfully')
-      navigate('/base/accordion/Teams')
+      navigate('/base/accordion/Team')
     } catch (error) {
       console.error('Error creating team:', error)
       alert('Error creating team')
     }
   }
-
   return (
     <CContainer>
       <CCard>
@@ -130,8 +148,7 @@ const CreateTeam = () => {
 
             <div className="mb-3">
               <CFormLabel>Client:</CFormLabel>
-              <CFormSelect value={selectedClientId} onChange={handleClientChange} required>
-                <option value="">Select Client</option>
+              <CFormSelect value={selectedClientId} onChange={handleClientChange}>
                 {clients.map((client) => (
                   <option key={client.ID} value={client.ID}>
                     {client.Name}
@@ -140,23 +157,54 @@ const CreateTeam = () => {
               </CFormSelect>
             </div>
 
-            <CCol>
+            <div className="mb-3">
               <CFormLabel>Select Members:</CFormLabel>
-              <CListGroup>
-                {members.map((member) => (
-                  <CListGroupItem key={member.ID}>
-                    <CFormCheck
-                      id={`member-${member.ID}`}
-                      label={member.Name}
-                      checked={selectedMembers.includes(member.ID)}
-                      onChange={() => handleMemberToggle(member.ID)}
-                    />
-                  </CListGroupItem>
-                ))}
-              </CListGroup>
-            </CCol>
+              <Select
+                isMulti
+                options={users}
+                className="basic-multi-select"
+                classNamePrefix="select"
+                onChange={handleMemberChange}
+                styles={{
+                  control: (provided) => ({
+                    ...provided,
+                    backgroundColor: 'var(--cui-body-bg)',
+                    color: 'var(--cui-body-color)',
+                  }),
+                  menu: (provided) => ({
+                    ...provided,
+                    backgroundColor: 'var(--cui-body-bg)',
+                  }),
+                  option: (provided, state) => ({
+                    ...provided,
+                    backgroundColor: state.isFocused
+                      ? 'var(--cui-secondary-bg)'
+                      : 'var(--cui-body-bg)',
+                    color: 'var(--cui-body-color)',
+                  }),
+                  multiValue: (provided) => ({
+                    ...provided,
+                    backgroundColor: 'var(--cui-secondary-bg)',
+                  }),
+                  multiValueLabel: (provided) => ({
+                    ...provided,
+                    color: 'var(--cui-body-color)',
+                  }),
+                  singleValue: (provided) => ({
+                    ...provided,
+                    color: 'var(--cui-body-color)',
+                  }),
+                }}
+                format
+                GroupLabel={(data) => (
+                  <div style={{ fontWeight: 'bold', color: 'var(--cui-primary-color)' }}>
+                    {data.label}
+                  </div>
+                )}
+              />
+            </div>
 
-            <CButton type="submit" color="primary">
+            <CButton type="submit" color="primary" className="mt-3">
               Create Team
             </CButton>
           </CForm>
