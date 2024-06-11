@@ -33,6 +33,23 @@ const tabOptions = {
 
 const enumValues = ['N/A', 'O', 'DN', 'W', 'P', 'R', 'D', 'A', 'C']
 
+const currentYear = new Date().getFullYear()
+const years = Array.from(new Array(10), (val, index) => currentYear - index)
+const months = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+
 const CompanyDetailPage = () => {
   const { clientId } = useParams()
   const [client, setClient] = useState(null)
@@ -40,6 +57,9 @@ const CompanyDetailPage = () => {
   const [activeTab, setActiveTab] = useState('administration')
   const [tabData, setTabData] = useState({})
   const [doughnutData, setDoughnutData] = useState(null)
+  const [selectedYear, setSelectedYear] = useState(currentYear)
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [dataExists, setDataExists] = useState(true)
 
   useEffect(() => {
     const fetchCompanyDetails = async () => {
@@ -62,7 +82,7 @@ const CompanyDetailPage = () => {
     if (client) {
       fetchTabData(activeTab)
     }
-  }, [client, activeTab])
+  }, [client, activeTab, selectedYear, selectedMonth])
 
   useEffect(() => {
     const fetchDoughnutData = async () => {
@@ -95,12 +115,22 @@ const CompanyDetailPage = () => {
 
   const fetchTabData = async (tab) => {
     try {
-      const response = await fetch(`${ENDPOINT}/api/${tab}/${clientId}`)
+      const response = await fetch(
+        `${ENDPOINT}/api/${tab}/${clientId}?year=${selectedYear}&month=${selectedMonth}`,
+      )
       const data = await response.json()
-      console.log(`Data for ${tab}:`, data)
-      setTabData(data)
+      if (response.ok) {
+        setTabData(data)
+        setDataExists(true)
+      } else {
+        console.error(`Error fetching data for ${tab}:`, data.error)
+        setTabData({})
+        setDataExists(false)
+      }
     } catch (error) {
       console.error(`Error fetching data for ${tab}:`, error)
+      setTabData({})
+      setDataExists(false)
     }
   }
 
@@ -129,7 +159,12 @@ const CompanyDetailPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ...tabData, ClientID: clientId }),
+        body: JSON.stringify({
+          ...tabData,
+          ClientID: clientId,
+          Year: selectedYear,
+          Month: selectedMonth,
+        }),
       })
 
       const result = await response.json()
@@ -143,6 +178,16 @@ const CompanyDetailPage = () => {
       console.error('Error saving data:', error)
       alert('Error saving data')
     }
+  }
+
+  const handleYearChange = (event) => {
+    setSelectedYear(event.target.value)
+    handleSelectChange(event, 'Year') // Update tabData with the selected year
+  }
+
+  const handleMonthChange = (event) => {
+    setSelectedMonth(event.target.value)
+    handleSelectChange(event, 'Month') // Update tabData with the selected month
   }
 
   return (
@@ -252,6 +297,30 @@ const CompanyDetailPage = () => {
               </CNav>
             </CCardHeader>
             <CCardBody>
+              <div className="d-flex align-items-center">
+                <CFormSelect
+                  value={selectedYear}
+                  onChange={handleYearChange}
+                  className={!dataExists ? 'border-danger' : ''}
+                >
+                  {years.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </CFormSelect>
+                <CFormSelect
+                  value={selectedMonth}
+                  onChange={handleMonthChange}
+                  className={!dataExists ? 'border-danger' : ''}
+                >
+                  {months.map((month, index) => (
+                    <option key={index + 1} value={index + 1}>
+                      {month}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </div>
               <CTable>
                 <CTableBody style={{ display: 'inline-flex' }}>
                   {tabOptions[activeTab].map((option) => (

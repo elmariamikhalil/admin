@@ -990,7 +990,7 @@ app.get('/api/teams/:teamId', (req, res) => {
   })
 })
 
-const fetchTabData = (tableName) => (req, res) => {
+/*const fetchTabData = (tableName) => (req, res) => {
   const clientId = req.params.clientId
   pool.query(`SELECT * FROM ${tableName} WHERE ClientID = ?`, [clientId], (error, results) => {
     if (error) {
@@ -999,6 +999,24 @@ const fetchTabData = (tableName) => (req, res) => {
     }
     res.json(results[0] || {})
   })
+}*/
+//=====================Date FILTER===========================//
+const fetchTabData = (tableName) => (req, res) => {
+  const { clientId } = req.params
+  const { year, month } = req.query
+
+  // Assuming you have a database connection pool named 'pool'
+  pool.query(
+    `SELECT * FROM ${tableName} WHERE ClientID = ? AND Year = ? AND Month = ?`,
+    [clientId, year, month],
+    (error, results) => {
+      if (error) {
+        console.error(`Error fetching data for ${tableName}:`, error)
+        return res.status(500).json({ error: `Failed to fetch data for ${tableName}` })
+      }
+      res.json(results[0] || {})
+    },
+  )
 }
 
 const saveTabData = (tableName) => (req, res) => {
@@ -1014,8 +1032,8 @@ const saveTabData = (tableName) => (req, res) => {
 
     if (results.length > 0) {
       pool.query(
-        `UPDATE ${tableName} SET ? WHERE ClientID = ?`,
-        [data, clientId],
+        `UPDATE ${tableName} SET ? WHERE ClientID = ? AND Year = ? AND Month = ?`,
+        [data, clientId, data.Year, data.Month],
         (updateError) => {
           if (updateError) {
             console.error(`Error updating data for ${tableName}:`, updateError)
