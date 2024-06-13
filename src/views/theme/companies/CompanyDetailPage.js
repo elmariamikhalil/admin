@@ -34,7 +34,7 @@ const tabOptions = {
 const enumValues = ['N/A', 'O', 'DN', 'W', 'P', 'R', 'D', 'A', 'C']
 
 const currentYear = new Date().getFullYear()
-const years = Array.from(new Array(10), (val, index) => currentYear - index)
+const years = Array.from(new Array(4), (val, index) => currentYear - index)
 const months = [
   'January',
   'February',
@@ -59,6 +59,10 @@ const CompanyDetailPage = () => {
   const [doughnutData, setDoughnutData] = useState(null)
   const [selectedYear, setSelectedYear] = useState(currentYear)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [startYear, setStartYear] = useState(currentYear)
+  const [startMonth, setStartMonth] = useState(new Date().getMonth() + 1)
+  const [endYear, setEndYear] = useState(currentYear)
+  const [endMonth, setEndMonth] = useState(new Date().getMonth() + 1)
   const [dataExists, setDataExists] = useState(true)
 
   useEffect(() => {
@@ -112,7 +116,49 @@ const CompanyDetailPage = () => {
       console.error('Error fetching team members:', error)
     }
   }
+  useEffect(() => {
+    fetchPieChartData()
+  }, [clientId, activeTab, startYear, startMonth, endYear, endMonth])
 
+  const fetchPieChartData = async () => {
+    try {
+      const response = await fetch(
+        `${ENDPOINT}/api/pie/${activeTab}/${clientId}?startYear=${startYear}&startMonth=${startMonth}&endYear=${endYear}&endMonth=${endMonth}`,
+      )
+      const data = await response.json()
+
+      if (response.ok) {
+        const labels = Object.keys(data)
+        const counts = Object.values(data)
+        const total = counts.reduce((acc, count) => acc + count, 0)
+        const percentages = counts.map((count) => (count / total) * 100)
+
+        setDoughnutData({
+          labels,
+          datasets: [
+            {
+              data: percentages,
+              backgroundColor: [
+                '#FF6384',
+                '#36A2EB',
+                '#FFCE56',
+                '#FF6384',
+                '#36A2EB',
+                '#FFCE56',
+                '#FF6384',
+                '#36A2EB',
+                '#FFCE56',
+              ],
+            },
+          ],
+        })
+      } else {
+        console.error('Error fetching pie chart data:', data.error)
+      }
+    } catch (error) {
+      console.error('Error fetching pie chart data:', error)
+    }
+  }
   const fetchTabData = async (tab) => {
     try {
       const response = await fetch(
@@ -189,7 +235,21 @@ const CompanyDetailPage = () => {
     setSelectedMonth(event.target.value)
     handleSelectChange(event, 'Month') // Update tabData with the selected month
   }
+  const handleStartYearChange = (event) => {
+    setStartYear(event.target.value)
+  }
 
+  const handleStartMonthChange = (event) => {
+    setStartMonth(event.target.value)
+  }
+
+  const handleEndYearChange = (event) => {
+    setEndYear(event.target.value)
+  }
+
+  const handleEndMonthChange = (event) => {
+    setEndMonth(event.target.value)
+  }
   return (
     <>
       {client && (
@@ -273,6 +333,37 @@ const CompanyDetailPage = () => {
           <CCard>
             <CCardHeader>Pie Chart</CCardHeader>
             <CCardBody style={{ height: '100%' }}>
+              <div className="d-flex align-items-center mb-3">
+                <CFormSelect value={startYear} onChange={handleStartYearChange}>
+                  {years.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </CFormSelect>
+                <CFormSelect value={startMonth} onChange={handleStartMonthChange}>
+                  {months.map((month, index) => (
+                    <option key={index + 1} value={index + 1}>
+                      {month}
+                    </option>
+                  ))}
+                </CFormSelect>
+                <span className="mx-2">to</span>
+                <CFormSelect value={endYear} onChange={handleEndYearChange}>
+                  {years.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </CFormSelect>
+                <CFormSelect value={endMonth} onChange={handleEndMonthChange}>
+                  {months.map((month, index) => (
+                    <option key={index + 1} value={index + 1}>
+                      {month}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </div>
               {doughnutData && (
                 <CChart
                   type="doughnut"

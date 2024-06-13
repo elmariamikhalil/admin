@@ -1018,55 +1018,95 @@ const fetchTabData = (tableName) => (req, res) => {
     },
   )
 }
+const fetchPieChartData = (tableName) => (req, res) => {
+  const { clientId } = req.params
+  const { startYear, startMonth, endYear, endMonth } = req.query
+
+  pool.query(
+    `SELECT * FROM ${tableName} WHERE ClientID = ? AND 
+    ((Year > ? OR (Year = ? AND Month >= ?)) AND 
+    (Year < ? OR (Year = ? AND Month <= ?)))`,
+    [clientId, startYear, startYear, startMonth, endYear, endYear, endMonth],
+    (error, results) => {
+      if (error) {
+        console.error(`Error fetching data for ${tableName}:`, error)
+        return res.status(500).json({ error: `Failed to fetch data for ${tableName}` })
+      }
+
+      const counts = results.reduce((acc, row) => {
+        Object.values(row).forEach((value) => {
+          if (enumValues.includes(value)) {
+            acc[value] = (acc[value] || 0) + 1
+          }
+        })
+        return acc
+      }, {})
+
+      res.json(counts)
+    },
+  )
+}
 
 const saveTabData = (tableName) => (req, res) => {
   const clientId = req.params.clientId
   const data = req.body
   data.ClientID = clientId
 
-  pool.query(`SELECT * FROM ${tableName} WHERE ClientID = ?`, [clientId], (error, results) => {
-    if (error) {
-      console.error(`Error fetching data for ${tableName}:`, error)
-      return res.status(500).json({ error: `Failed to fetch data for ${tableName}` })
-    }
+  // Extracting Year and Month from the request body
+  const { Year, Month } = data
 
-    if (results.length > 0) {
-      pool.query(
-        `UPDATE ${tableName} SET ? WHERE ClientID = ? AND Year = ? AND Month = ?`,
-        [data, clientId, data.Year, data.Month],
-        (updateError) => {
-          if (updateError) {
-            console.error(`Error updating data for ${tableName}:`, updateError)
-            return res.status(500).json({ error: `Failed to update data for ${tableName}` })
+  pool.query(
+    `SELECT * FROM ${tableName} WHERE ClientID = ? AND Year = ? AND Month = ?`,
+    [clientId, Year, Month],
+    (error, results) => {
+      if (error) {
+        console.error(`Error fetching data for ${tableName}:`, error)
+        return res.status(500).json({ error: `Failed to fetch data for ${tableName}` })
+      }
+
+      if (results.length > 0) {
+        pool.query(
+          `UPDATE ${tableName} SET ? WHERE ClientID = ? AND Year = ? AND Month = ?`,
+          [data, clientId, Year, Month],
+          (updateError) => {
+            if (updateError) {
+              console.error(`Error updating data for ${tableName}:`, updateError)
+              return res.status(500).json({ error: `Failed to update data for ${tableName}` })
+            }
+            res.json({ success: true, data })
+          },
+        )
+      } else {
+        pool.query(`INSERT INTO ${tableName} SET ?`, data, (insertError) => {
+          if (insertError) {
+            console.error(`Error inserting data into ${tableName}:`, insertError)
+            return res.status(500).json({ error: `Failed to insert data into ${tableName}` })
           }
           res.json({ success: true, data })
-        },
-      )
-    } else {
-      pool.query(`INSERT INTO ${tableName} SET ?`, data, (insertError) => {
-        if (insertError) {
-          console.error(`Error inserting data into ${tableName}:`, insertError)
-          return res.status(500).json({ error: `Failed to insert data into ${tableName}` })
-        }
-        res.json({ success: true, data })
-      })
-    }
-  })
+        })
+      }
+    },
+  )
 }
 
 app.get('/api/administration/:clientId', fetchTabData('administration'))
+app.get('/api/pie/administration/:clientId', fetchPieChartData('administration'))
 app.post('/api/administration/:clientId', saveTabData('administration'))
 
 app.get('/api/backoffice/:clientId', fetchTabData('backoffice'))
+app.get('/api/pie/backoffice/:clientId', fetchPieChartData('backoffice'))
 app.post('/api/backoffice/:clientId', saveTabData('backoffice'))
 
 app.get('/api/audit/:clientId', fetchTabData('audit'))
+app.get('/api/pie/audit/:clientId', fetchPieChartData('audit'))
 app.post('/api/audit/:clientId', saveTabData('audit'))
 
 app.get('/api/advisory/:clientId', fetchTabData('advisory'))
+app.get('/api/pie/advisory/:clientId', fetchPieChartData('advisory'))
 app.post('/api/advisory/:clientId', saveTabData('advisory'))
 
 app.get('/api/yearwork/:clientId', fetchTabData('yearwork'))
+app.get('/api/pie/yearwork/:clientId', fetchPieChartData('yearwork'))
 app.post('/api/yearwork/:clientId', saveTabData('yearwork'))
 
 // Start the server
