@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom' // Import useNavigate
 import {
   CCard,
   CCardBody,
@@ -16,8 +17,13 @@ import {
   CTableBody,
   CTableDataCell,
   CProgress,
+  CFormInput,
+  CFormSelect,
+  CButton,
 } from '@coreui/react'
-import { Avatar } from 'tabler-react' // Import Avatar component from Tabler UI
+import CIcon from '@coreui/icons-react'
+import { cilFullscreen, cilPencil } from '@coreui/icons'
+import { Avatar } from 'tabler-react'
 
 const ENDPOINT = 'http://localhost:5000' // Your server URL
 
@@ -26,8 +32,11 @@ const ProjectDetailPage = () => {
   const [project, setProject] = useState({})
   const [team, setTeam] = useState([])
   const [clients, setClients] = useState([])
+  const navigate = useNavigate() // Corrected import and usage
   const [hoursSigned, setHoursSigned] = useState(0)
   const [fulfilledHours, setFulfilledHours] = useState(0)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
 
   useEffect(() => {
     fetchProject(id)
@@ -76,7 +85,28 @@ const ProjectDetailPage = () => {
       console.error('Error fetching hours details:', error)
     }
   }
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value)
+  }
 
+  const handleCategoryChange = (event) => {
+    setSelectedCategory(event.target.value)
+  }
+  const filteredClients = clients.filter((client) =>
+    client.Name.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
+  const handleViewClick = (clientId) => {
+    // Navigate to the company details page
+    navigate(`/theme/companies/CompanyDetailPage/${clientId}`)
+  }
+
+  const handleEditClick = (clientId) => {
+    // Navigate to the edit company details page
+    navigate(`/theme/companies/EditCompany/${clientId}`)
+  }
+  const filteredClientsByCategory = selectedCategory
+    ? filteredClients.filter((client) => client.Category === selectedCategory)
+    : filteredClients
   return (
     <div>
       <CRow>
@@ -122,23 +152,41 @@ const ProjectDetailPage = () => {
         </CCol>
         <CCol sm="6">
           <CCard>
-            <CCardHeader>Clients</CCardHeader>
-            <CCardBody>
+            <CCardHeader>
+              <div className="d-flex justify-content-between align-items-center">
+                <span>Clients</span>
+                <div>
+                  <CFormInput
+                    type="text"
+                    placeholder="Search by name"
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                  />
+                </div>
+                <div>
+                  <CFormSelect custom onChange={handleCategoryChange} value={selectedCategory}>
+                    <option value="">Filter by Category</option>
+                    <option value="Key Client">Key Client</option>
+                    <option value="Client">Client</option>
+                    <option value="Exit Client">Exit Client</option>
+                    <option value="On Hold">On Hold</option>
+                  </CFormSelect>
+                </div>
+              </div>
+            </CCardHeader>
+            <CCardBody style={{ maxHeight: '300px', overflowY: 'auto' }}>
               <CTable hover responsive>
                 <CTableHead>
                   <CTableRow>
-                    <CTableHeaderCell scope="col">ID</CTableHeaderCell>
                     <CTableHeaderCell scope="col">Name</CTableHeaderCell>
-                    <CTableHeaderCell scope="col">Contact</CTableHeaderCell>
                     <CTableHeaderCell scope="col">Category</CTableHeaderCell>
+                    <CTableHeaderCell scope="col">Actions</CTableHeaderCell>
                   </CTableRow>
                 </CTableHead>
                 <CTableBody>
-                  {clients.map((client) => (
+                  {filteredClientsByCategory.map((client) => (
                     <CTableRow key={client.ID}>
-                      <CTableHeaderCell>{client.ID}</CTableHeaderCell>
                       <CTableDataCell>{client.Name}</CTableDataCell>
-                      <CTableDataCell>{client.Contact}</CTableDataCell>
                       <CTableDataCell>
                         <CBadge
                           color={
@@ -157,12 +205,30 @@ const ProjectDetailPage = () => {
                           {client.Category}
                         </CBadge>
                       </CTableDataCell>
+                      <CTableDataCell>
+                        <CButton
+                          color="primary"
+                          alt="see more"
+                          onClick={() => handleViewClick(client.ID)}
+                          className="me-2"
+                        >
+                          <CIcon icon={cilFullscreen} />
+                        </CButton>
+                        <CButton
+                          color="secondary"
+                          alt="edit"
+                          onClick={() => handleEditClick(client.ID)}
+                        >
+                          <CIcon icon={cilPencil} />
+                        </CButton>
+                      </CTableDataCell>
                     </CTableRow>
                   ))}
                 </CTableBody>
               </CTable>
             </CCardBody>
           </CCard>
+
           <CCard>
             <CCardHeader>Hours Overview</CCardHeader>
             <CCardBody>
