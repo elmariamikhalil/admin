@@ -27,7 +27,7 @@ const tabOptions = {
   administration: ['Cash', 'Bank', 'Invoice', 'LIP', 'TB', 'VAT', 'ICP', 'Salary', 'CBS'],
   backoffice: ['Pay', 'Billing', 'Report', 'Mail'],
   audit: ['FS', 'Hours', 'Deadlines'],
-  advisory: ['ProjectHours', 'Deadlines'],
+  advisory: ['Project', 'Hours', 'Deadlines'],
   yearwork: ['IB', 'FS', 'VPB', 'SUP', 'KVK'],
 }
 
@@ -255,11 +255,33 @@ const CompanyDetailPage = () => {
       {client && (
         <CRow>
           <CCol sm={8}>
-            <CCard>
-              <CCardHeader>Company Details</CCardHeader>
+            <CCard className="mb-4">
+              <CCardHeader
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <div>Company Details</div>
+                <div>
+                  <CBadge
+                    color={
+                      client.Category === 'Key Client'
+                        ? 'success'
+                        : client.Category === 'Client'
+                          ? 'info'
+                          : client.Category === 'Exit Client'
+                            ? 'danger'
+                            : client.Category === 'On Hold'
+                              ? 'warning'
+                              : 'primary'
+                    }
+                    shape="rounded-pill"
+                  >
+                    {client.Category}
+                  </CBadge>
+                </div>
+              </CCardHeader>
               <CCardBody>
                 <CRow className="align-items-center">
-                  <CCol md="6">
+                  <CCol md="4">
                     <CImage
                       src={`${ENDPOINT}/uploads/${client.logo}`}
                       alt="Client Logo"
@@ -269,41 +291,30 @@ const CompanyDetailPage = () => {
                       height="200"
                     />
                   </CCol>
-                  <CCol md="6">
-                    <CAvatar color="primary" textColor="white">
-                      {extractInitials(client.Owner)}
-                    </CAvatar>
-                    {client.Owner}
-                  </CCol>
-                  <CCol xs={4}>
-                    <CBadge
-                      color={
-                        client.Category === 'Key Client'
-                          ? 'success'
-                          : client.Category === 'Client'
-                            ? 'info'
-                            : client.Category === 'Exit Client'
-                              ? 'danger'
-                              : client.Category === 'On Hold'
-                                ? 'warning'
-                                : 'primary'
-                      }
-                      shape="rounded-pill"
-                    >
-                      {client.Category}
-                    </CBadge>
+                  <CCol md="8">
+                    <div className="d-flex flex-column align-items-start">
+                      <div>
+                        <h2>{client.Name}</h2>
+                      </div>
+                      <div className="d-flex align-items-center mt-3">
+                        <CAvatar color="primary" textColor="white">
+                          {extractInitials(client.Owner)}
+                        </CAvatar>
+                        <span className="ml-2">{client.Owner}</span>
+                      </div>
+                    </div>
                   </CCol>
                 </CRow>
               </CCardBody>
             </CCard>
           </CCol>
           <CCol xs={4}>
-            <CCard>
+            <CCard className="mb-4">
               <CCardHeader>Team Members</CCardHeader>
               <CCardBody>
                 <div className="team-list">
                   {teamMembers.map((team, index) => (
-                    <div key={index} className="team">
+                    <div key={index} className="team mb-3">
                       <div className="team-name">{team.Name}</div>
                       <div className="avatar-stack">
                         {team.members.map((member, memberIndex) => (
@@ -330,9 +341,9 @@ const CompanyDetailPage = () => {
       )}
       <CRow className="mb-4">
         <CCol xs={12} sm={4}>
-          <CCard>
+          <CCard className="mb-4" style={{ height: '100%' }}>
             <CCardHeader>Pie Chart</CCardHeader>
-            <CCardBody style={{ height: '100%' }}>
+            <CCardBody>
               <div className="d-flex align-items-center mb-3">
                 <CFormSelect value={startYear} onChange={handleStartYearChange}>
                   {years.map((year) => (

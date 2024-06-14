@@ -23,7 +23,6 @@ import {
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilFullscreen, cilPencil } from '@coreui/icons'
-import { Avatar } from 'tabler-react'
 
 const ENDPOINT = 'http://localhost:5000' // Your server URL
 
