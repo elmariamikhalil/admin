@@ -1022,30 +1022,80 @@ const fetchPieChartData = (tableName) => (req, res) => {
   const { clientId } = req.params
   const { startYear, startMonth, endYear, endMonth } = req.query
 
-  pool.query(
-    `SELECT * FROM ${tableName} WHERE ClientID = ? AND 
+  // Define which columns in each table have the enum values you want to count
+  let enumColumns = []
+
+  // Mapping of table names to their respective enum columns
+  const tableEnumColumns = {
+    administration: [
+      'Cash',
+      'Bank',
+      'Invoice',
+      'LIP',
+      'TB',
+      'VAT',
+      'ICP',
+      'Salary',
+      'PAWW',
+      'Pension',
+      'TKH',
+      'CBS',
+      'CBAM',
+      'OSS',
+    ],
+    backoffice: ['Pay', 'Billing', 'Report', 'Mail'],
+    audit: ['FS', 'Hours'],
+    advisory: ['Project', 'Hours'],
+    yearwork: ['IB', 'FS', 'VPB', 'SUP', 'KVK', 'YW O/C'],
+  }
+
+  if (tableEnumColumns[tableName]) {
+    enumColumns = tableEnumColumns[tableName]
+  } else {
+    console.error(`Enum columns not defined for table: ${tableName}`)
+    return res.status(500).json({ error: `Enum columns not defined for table: ${tableName}` })
+  }
+
+  // Construct the SQL query dynamically based on the enumColumns
+  const columnConditions = enumColumns.map((column) => `${column} IN (?)`).join(' OR ')
+
+  const query = `
+    SELECT ${enumColumns.join(', ')}, COUNT(*) AS count
+    FROM ${tableName}
+    WHERE ClientID = ? AND 
     ((Year > ? OR (Year = ? AND Month >= ?)) AND 
-    (Year < ? OR (Year = ? AND Month <= ?)))`,
-    [clientId, startYear, startYear, startMonth, endYear, endYear, endMonth],
-    (error, results) => {
-      if (error) {
-        console.error(`Error fetching data for ${tableName}:`, error)
-        return res.status(500).json({ error: `Failed to fetch data for ${tableName}` })
-      }
+    (Year < ? OR (Year = ? AND Month <= ?)))
+    GROUP BY ${enumColumns.join(', ')}
+  `
 
-      const counts = results.reduce((acc, row) => {
-        Object.values(row).forEach((value) => {
-          if (enumValues.includes(value)) {
-            acc[value] = (acc[value] || 0) + 1
-          }
-        })
-        return acc
-      }, {})
+  const queryParams = [clientId, startYear, startYear, startMonth, endYear, endYear, endMonth]
 
-      res.json(counts)
-    },
-  )
+  pool.query(query, queryParams, (error, results) => {
+    if (error) {
+      console.error(`Error fetching data for ${tableName}:`, error)
+      return res.status(500).json({ error: `Failed to fetch data for ${tableName}` })
+    }
+
+    console.log('Fetched results:', results)
+
+    const counts = results.reduce((acc, row) => {
+      // Iterate over each enum column dynamically
+      enumColumns.forEach((column) => {
+        if (!acc[column]) {
+          acc[column] = {}
+        }
+        acc[column][row[column]] = row.count
+      })
+      return acc
+    }, {})
+
+    console.log('Counts:', counts)
+
+    res.json(counts)
+  })
 }
+
+module.exports = fetchPieChartData
 
 const saveTabData = (tableName) => (req, res) => {
   const clientId = req.params.clientId
@@ -1109,6 +1159,44 @@ app.get('/api/yearwork/:clientId', fetchTabData('yearwork'))
 app.get('/api/pie/yearwork/:clientId', fetchPieChartData('yearwork'))
 app.post('/api/yearwork/:clientId', saveTabData('yearwork'))
 
+//display stats of operations for the project overview
+app.get('/api/projects/:projectId/clients/tab-options/:tabName', async (req, res) => {
+  const { projectId, tabName } = req.params
+
+  try {
+    pool.getConnection((err, connection) => {
+      if (err) throw err
+
+      const tableName = tabName.toLowerCase() // Convert tab name to lowercase for table name
+
+      const query = `
+        SELECT *
+        FROM ${tableName}
+        WHERE ClientID IN (
+          SELECT ID
+          FROM clients
+          WHERE ProjectID = ?
+        )
+      `
+
+      connection.query(query, [projectId], (error, results) => {
+        connection.release() // Release the connection after query execution
+
+        if (error) {
+          console.error(`Error fetching data for ${tabName}:`, error)
+          return res.status(500).json({ error: `Failed to fetch data for ${tabName}` })
+        }
+
+        res.json(results) // Send fetched data as JSON response
+      })
+    })
+  } catch (error) {
+    console.error('Error in tab options endpoint:', error)
+    res.status(500).json({ error: 'Failed to fetch tab options data' })
+  }
+})
+
+//=====================Date FILTER===========================//
 // Start the server
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {

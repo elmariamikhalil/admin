@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { CChart } from '@coreui/react-chartjs'
+import ReactApexChart from 'react-apexcharts'
 import {
   CCard,
   CCardBody,
@@ -8,7 +8,6 @@ import {
   CCol,
   CRow,
   CAvatar,
-  CBadge,
   CImage,
   CTableBody,
   CTableRow,
@@ -34,7 +33,7 @@ const tabOptions = {
 const enumValues = ['N/A', 'O', 'DN', 'W', 'P', 'R', 'D', 'A', 'C']
 
 const currentYear = new Date().getFullYear()
-const years = Array.from(new Array(4), (val, index) => currentYear - index)
+const years = Array.from(new Array(4), (_, index) => currentYear - index)
 const months = [
   'January',
   'February',
@@ -116,49 +115,38 @@ const CompanyDetailPage = () => {
       console.error('Error fetching team members:', error)
     }
   }
+
   useEffect(() => {
+    const fetchPieChartData = async () => {
+      try {
+        const response = await fetch(
+          `${ENDPOINT}/api/pie/${activeTab}/${clientId}?startYear=${startYear}&startMonth=${startMonth}&endYear=${endYear}&endMonth=${endMonth}`,
+        )
+        const data = await response.json()
+        if (response.ok) {
+          const labels = []
+          const series = []
+          Object.keys(data).forEach((key) => {
+            const options = Object.keys(data[key])
+            labels.push(key)
+            series.push(options.length)
+          })
+
+          setDoughnutData({
+            labels,
+            series,
+          })
+        } else {
+          console.error('Error fetching pie chart data:', data.error)
+        }
+      } catch (error) {
+        console.error('Error fetching pie chart data:', error)
+      }
+    }
+
     fetchPieChartData()
   }, [clientId, activeTab, startYear, startMonth, endYear, endMonth])
 
-  const fetchPieChartData = async () => {
-    try {
-      const response = await fetch(
-        `${ENDPOINT}/api/pie/${activeTab}/${clientId}?startYear=${startYear}&startMonth=${startMonth}&endYear=${endYear}&endMonth=${endMonth}`,
-      )
-      const data = await response.json()
-
-      if (response.ok) {
-        const labels = Object.keys(data)
-        const counts = Object.values(data)
-        const total = counts.reduce((acc, count) => acc + count, 0)
-        const percentages = counts.map((count) => (count / total) * 100)
-
-        setDoughnutData({
-          labels,
-          datasets: [
-            {
-              data: percentages,
-              backgroundColor: [
-                '#FF6384',
-                '#36A2EB',
-                '#FFCE56',
-                '#FF6384',
-                '#36A2EB',
-                '#FFCE56',
-                '#FF6384',
-                '#36A2EB',
-                '#FFCE56',
-              ],
-            },
-          ],
-        })
-      } else {
-        console.error('Error fetching pie chart data:', data.error)
-      }
-    } catch (error) {
-      console.error('Error fetching pie chart data:', error)
-    }
-  }
   const fetchTabData = async (tab) => {
     try {
       const response = await fetch(
@@ -166,6 +154,7 @@ const CompanyDetailPage = () => {
       )
       const data = await response.json()
       if (response.ok) {
+        console.log(`Fetched data for ${tab}:`, data) // Debug log
         setTabData(data)
         setDataExists(true)
       } else {
@@ -235,6 +224,7 @@ const CompanyDetailPage = () => {
     setSelectedMonth(event.target.value)
     handleSelectChange(event, 'Month') // Update tabData with the selected month
   }
+
   const handleStartYearChange = (event) => {
     setStartYear(event.target.value)
   }
@@ -250,34 +240,37 @@ const CompanyDetailPage = () => {
   const handleEndMonthChange = (event) => {
     setEndMonth(event.target.value)
   }
+
+  const chartOptions = {
+    chart: {
+      width: 380,
+      type: 'pie',
+    },
+    labels: doughnutData ? doughnutData.labels : [],
+    responsive: [
+      {
+        breakpoint: 480,
+        options: {
+          chart: {
+            width: 200,
+          },
+          legend: {
+            position: 'bottom',
+          },
+        },
+      },
+    ],
+  }
+  const chartSeries = doughnutData ? doughnutData.series : []
+
   return (
     <>
       {client && (
         <CRow>
           <CCol sm={8}>
             <CCard className="mb-4">
-              <CCardHeader
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <div>Company Details</div>
-                <div>
-                  <CBadge
-                    color={
-                      client.Category === 'Key Client'
-                        ? 'success'
-                        : client.Category === 'Client'
-                          ? 'info'
-                          : client.Category === 'Exit Client'
-                            ? 'danger'
-                            : client.Category === 'On Hold'
-                              ? 'warning'
-                              : 'primary'
-                    }
-                    shape="rounded-pill"
-                  >
-                    {client.Category}
-                  </CBadge>
-                </div>
+              <CCardHeader>
+                <h4>{client.Name}</h4>
               </CCardHeader>
               <CCardBody>
                 <CRow className="align-items-center">
@@ -339,6 +332,7 @@ const CompanyDetailPage = () => {
           </CCol>
         </CRow>
       )}
+
       <CRow className="mb-4">
         <CCol xs={12} sm={4}>
           <CCard className="mb-4" style={{ height: '100%' }}>
@@ -375,12 +369,15 @@ const CompanyDetailPage = () => {
                   ))}
                 </CFormSelect>
               </div>
-              {doughnutData && (
-                <CChart
-                  type="doughnut"
-                  datasets={doughnutData.datasets}
-                  labels={doughnutData.labels}
+              {doughnutData ? (
+                <ReactApexChart
+                  options={chartOptions}
+                  series={chartSeries}
+                  type="pie"
+                  width={380}
                 />
+              ) : (
+                <div>No data available for pie chart</div>
               )}
             </CCardBody>
           </CCard>

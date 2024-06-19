@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
-import { useParams } from 'react-router-dom'
-import { Link, useNavigate } from 'react-router-dom' // Import useNavigate
+import { useParams, useNavigate } from 'react-router-dom'
 import {
   CCard,
   CCardBody,
@@ -20,9 +19,10 @@ import {
   CFormInput,
   CFormSelect,
   CButton,
+  CWidgetStatsF,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilFullscreen, cilPencil } from '@coreui/icons'
+import { cilPeople, cilFullscreen, cilPencil } from '@coreui/icons'
 
 const ENDPOINT = 'http://localhost:5000' // Your server URL
 
@@ -31,11 +31,12 @@ const ProjectDetailPage = () => {
   const [project, setProject] = useState({})
   const [team, setTeam] = useState([])
   const [clients, setClients] = useState([])
-  const navigate = useNavigate() // Corrected import and usage
   const [hoursSigned, setHoursSigned] = useState(0)
   const [fulfilledHours, setFulfilledHours] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [optionCounts, setOptionCounts] = useState({})
+  const navigate = useNavigate()
 
   useEffect(() => {
     fetchProject(id)
@@ -43,6 +44,10 @@ const ProjectDetailPage = () => {
     fetchClients(id)
     fetchHoursDetails(id)
   }, [id])
+
+  useEffect(() => {
+    calculateOptionCounts()
+  }, [clients])
 
   const fetchProject = async (projectId) => {
     try {
@@ -58,7 +63,6 @@ const ProjectDetailPage = () => {
     try {
       const response = await fetch(`${ENDPOINT}/api/projects/${projectId}/team`)
       const data = await response.json()
-      console.log('Team Data:', data) // Add this line
       setTeam(data)
     } catch (error) {
       console.error('Error fetching team:', error)
@@ -84,6 +88,29 @@ const ProjectDetailPage = () => {
       console.error('Error fetching hours details:', error)
     }
   }
+
+  const calculateOptionCounts = () => {
+    const counts = {}
+
+    clients.forEach((client) => {
+      if (client.Tabs) {
+        client.Tabs.forEach((tab) => {
+          if (tab.Options) {
+            tab.Options.forEach((option) => {
+              if (counts[option]) {
+                counts[option] += 1
+              } else {
+                counts[option] = 1
+              }
+            })
+          }
+        })
+      }
+    })
+
+    setOptionCounts(counts)
+  }
+
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value)
   }
@@ -91,21 +118,23 @@ const ProjectDetailPage = () => {
   const handleCategoryChange = (event) => {
     setSelectedCategory(event.target.value)
   }
-  const filteredClients = clients.filter((client) =>
-    client.Name.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+
   const handleViewClick = (clientId) => {
-    // Navigate to the company details page
     navigate(`/theme/companies/CompanyDetailPage/${clientId}`)
   }
 
   const handleEditClick = (clientId) => {
-    // Navigate to the edit company details page
     navigate(`/theme/companies/EditCompany/${clientId}`)
   }
+
+  const filteredClients = clients.filter((client) =>
+    client.Name.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
+
   const filteredClientsByCategory = selectedCategory
     ? filteredClients.filter((client) => client.Category === selectedCategory)
     : filteredClients
+
   return (
     <div>
       <CRow>
@@ -127,24 +156,23 @@ const ProjectDetailPage = () => {
           <CCard>
             <CCardHeader>Team</CCardHeader>
             <CCardBody>
-              <div class="avatars-stack">
+              <div className="avatars-stack">
                 {team.map((member) => (
                   <div
                     key={member.ID}
-                    class="avatar"
+                    className="avatar"
                     content={`${member.Name} - ${member.Position}`}
                   >
                     <CImage
                       src={`${ENDPOINT}/uploads/${member.Picture}`}
-                      class="avatar-img"
+                      className="avatar-img"
                       alt={member.email}
                       width={50}
                       height={50}
                     />
                   </div>
                 ))}
-                {/* Add the condition to show the remaining count */}
-                {team.length > 3 && <div class="avatar bg-secondary">+{team.length - 3}</div>}
+                {team.length > 3 && <div className="avatar bg-secondary">+{team.length - 3}</div>}
               </div>
             </CCardBody>
           </CCard>
@@ -163,7 +191,7 @@ const ProjectDetailPage = () => {
                   />
                 </div>
                 <div>
-                  <CFormSelect custom onChange={handleCategoryChange} value={selectedCategory}>
+                  <CFormSelect onChange={handleCategoryChange} value={selectedCategory}>
                     <option value="">Filter by Category</option>
                     <option value="Key Client">Key Client</option>
                     <option value="Client">Client</option>
@@ -237,6 +265,47 @@ const ProjectDetailPage = () => {
             </CCardBody>
           </CCard>
         </CCol>
+      </CRow>
+
+      <CRow>
+        {Object.keys(optionCounts).map((tabName) => (
+          <CCol sm="6" lg="4" key={tabName}>
+            <CCard>
+              <CCardHeader>Tab: {tabName}</CCardHeader>
+              <CCardBody>
+                <CTable hover responsive>
+                  <CTableHead>
+                    <CTableRow>
+                      <CTableHeaderCell scope="col">Option</CTableHeaderCell>
+                      <CTableHeaderCell scope="col">Count</CTableHeaderCell>
+                    </CTableRow>
+                  </CTableHead>
+                  <CTableBody>
+                    {Object.keys(optionCounts[tabName]).map((option) => (
+                      <CTableRow key={option}>
+                        <CTableDataCell>{option}</CTableDataCell>
+                        <CTableDataCell>{optionCounts[tabName][option]}</CTableDataCell>
+                      </CTableRow>
+                    ))}
+                  </CTableBody>
+                </CTable>
+              </CCardBody>
+            </CCard>
+          </CCol>
+        ))}
+      </CRow>
+
+      <CRow>
+        {Object.keys(optionCounts).map((option) => (
+          <CCol sm="6" lg="4" key={option}>
+            <CWidgetStatsF
+              color="info"
+              icon={<CIcon width={24} icon={cilPeople} />}
+              title={option}
+              value={optionCounts[option]}
+            />
+          </CCol>
+        ))}
       </CRow>
     </div>
   )
