@@ -24,7 +24,7 @@ import {
 import CIcon from '@coreui/icons-react'
 import { cilPeople, cilFullscreen, cilPencil } from '@coreui/icons'
 
-const ENDPOINT = 'http://localhost:5000' // Your server URL
+const ENDPOINT = 'http://localhost:5000'
 
 const ProjectDetailPage = () => {
   const { id } = useParams()
@@ -35,7 +35,7 @@ const ProjectDetailPage = () => {
   const [fulfilledHours, setFulfilledHours] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
-  const [optionCounts, setOptionCounts] = useState({})
+  const [totalOptionCounts, setTotalOptionCounts] = useState({})
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -43,17 +43,13 @@ const ProjectDetailPage = () => {
     fetchTeam(id)
     fetchClients(id)
     fetchHoursDetails(id)
+    fetchStats(id)
   }, [id])
-
-  useEffect(() => {
-    calculateOptionCounts()
-  }, [clients])
 
   const fetchProject = async (projectId) => {
     try {
-      const response = await fetch(`${ENDPOINT}/api/projects/${projectId}`)
-      const data = await response.json()
-      setProject(data)
+      const response = await axios.get(`${ENDPOINT}/api/projects/${projectId}`)
+      setProject(response.data)
     } catch (error) {
       console.error('Error fetching project:', error)
     }
@@ -61,9 +57,8 @@ const ProjectDetailPage = () => {
 
   const fetchTeam = async (projectId) => {
     try {
-      const response = await fetch(`${ENDPOINT}/api/projects/${projectId}/team`)
-      const data = await response.json()
-      setTeam(data)
+      const response = await axios.get(`${ENDPOINT}/api/projects/${projectId}/team`)
+      setTeam(response.data)
     } catch (error) {
       console.error('Error fetching team:', error)
     }
@@ -80,35 +75,21 @@ const ProjectDetailPage = () => {
 
   const fetchHoursDetails = async (projectId) => {
     try {
-      const response = await fetch(`${ENDPOINT}/api/projects/${projectId}/hours`)
-      const data = await response.json()
-      setHoursSigned(data.hoursSigned)
-      setFulfilledHours(data.fulfilledHours)
+      const response = await axios.get(`${ENDPOINT}/api/projects/${projectId}/hours`)
+      setHoursSigned(response.data.hoursSigned)
+      setFulfilledHours(response.data.fulfilledHours)
     } catch (error) {
       console.error('Error fetching hours details:', error)
     }
   }
 
-  const calculateOptionCounts = () => {
-    const counts = {}
-
-    clients.forEach((client) => {
-      if (client.Tabs) {
-        client.Tabs.forEach((tab) => {
-          if (tab.Options) {
-            tab.Options.forEach((option) => {
-              if (counts[option]) {
-                counts[option] += 1
-              } else {
-                counts[option] = 1
-              }
-            })
-          }
-        })
-      }
-    })
-
-    setOptionCounts(counts)
+  const fetchStats = async (projectId) => {
+    try {
+      const response = await axios.get(`${ENDPOINT}/api/projects/${projectId}/stats`)
+      setTotalOptionCounts(response.data)
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    }
   }
 
   const handleSearchChange = (event) => {
@@ -267,42 +248,22 @@ const ProjectDetailPage = () => {
         </CCol>
       </CRow>
 
+      {/* Displaying Option Counts */}
       <CRow>
-        {Object.keys(optionCounts).map((tabName) => (
+        {/* Displaying Option Counts in Tables */}
+        {Object.keys(totalOptionCounts).map((tabName) => (
           <CCol sm="6" lg="4" key={tabName}>
-            <CCard>
-              <CCardHeader>Tab: {tabName}</CCardHeader>
-              <CCardBody>
-                <CTable hover responsive>
-                  <CTableHead>
-                    <CTableRow>
-                      <CTableHeaderCell scope="col">Option</CTableHeaderCell>
-                      <CTableHeaderCell scope="col">Count</CTableHeaderCell>
-                    </CTableRow>
-                  </CTableHead>
-                  <CTableBody>
-                    {Object.keys(optionCounts[tabName]).map((option) => (
-                      <CTableRow key={option}>
-                        <CTableDataCell>{option}</CTableDataCell>
-                        <CTableDataCell>{optionCounts[tabName][option]}</CTableDataCell>
-                      </CTableRow>
-                    ))}
-                  </CTableBody>
-                </CTable>
-              </CCardBody>
-            </CCard>
+            <CCard></CCard>
           </CCol>
         ))}
-      </CRow>
 
-      <CRow>
-        {Object.keys(optionCounts).map((option) => (
+        {Object.keys(totalOptionCounts).map((option) => (
           <CCol sm="6" lg="4" key={option}>
             <CWidgetStatsF
               color="info"
               icon={<CIcon width={24} icon={cilPeople} />}
               title={option}
-              value={optionCounts[option]}
+              value={totalOptionCounts[option]}
             />
           </CCol>
         ))}

@@ -27,10 +27,10 @@ const tabOptions = {
   backoffice: ['Pay', 'Billing', 'Report', 'Mail'],
   audit: ['FS', 'Hours', 'Deadlines'],
   advisory: ['Project', 'Hours', 'Deadlines'],
-  yearwork: ['IB', 'FS', 'VPB', 'SUP', 'KVK'],
+  yearwork: ['IB', 'FS', 'VPB', 'SUP', 'KVK', 'YW'],
 }
 
-const enumValues = ['N/A', 'O', 'DN', 'W', 'P', 'R', 'D', 'A', 'C']
+const enumValues = ['NA', 'O', 'DN', 'W', 'P', 'R', 'D', 'A', 'C']
 
 const currentYear = new Date().getFullYear()
 const years = Array.from(new Array(4), (_, index) => currentYear - index)
@@ -123,14 +123,11 @@ const CompanyDetailPage = () => {
           `${ENDPOINT}/api/pie/${activeTab}/${clientId}?startYear=${startYear}&startMonth=${startMonth}&endYear=${endYear}&endMonth=${endMonth}`,
         )
         const data = await response.json()
+
         if (response.ok) {
-          const labels = []
-          const series = []
-          Object.keys(data).forEach((key) => {
-            const options = Object.keys(data[key])
-            labels.push(key)
-            series.push(options.length)
-          })
+          const filteredData = Object.entries(data).filter(([_, count]) => count > 0)
+          const labels = filteredData.map(([option]) => option)
+          const series = filteredData.map(([_, count]) => count)
 
           setDoughnutData({
             labels,
@@ -369,15 +366,17 @@ const CompanyDetailPage = () => {
                   ))}
                 </CFormSelect>
               </div>
-              {doughnutData ? (
+              {doughnutData && (
                 <ReactApexChart
-                  options={chartOptions}
-                  series={chartSeries}
-                  type="pie"
-                  width={380}
+                  options={{
+                    chart: {
+                      type: 'donut',
+                    },
+                    labels: doughnutData.labels,
+                  }}
+                  series={doughnutData.series}
+                  type="donut"
                 />
-              ) : (
-                <div>No data available for pie chart</div>
               )}
             </CCardBody>
           </CCard>
@@ -427,7 +426,7 @@ const CompanyDetailPage = () => {
                       <CTableDataCell>
                         <label style={{ marginRight: '10px' }}>{option}</label>
                         <CFormSelect
-                          value={tabData[option] || 'N/A'}
+                          value={tabData[option] || 'NA'}
                           onChange={(event) => handleSelectChange(event, option)}
                           style={{ width: '100%' }}
                         >

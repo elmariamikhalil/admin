@@ -1022,10 +1022,6 @@ const fetchPieChartData = (tableName) => (req, res) => {
   const { clientId } = req.params
   const { startYear, startMonth, endYear, endMonth } = req.query
 
-  // Define which columns in each table have the enum values you want to count
-  let enumColumns = []
-
-  // Mapping of table names to their respective enum columns
   const tableEnumColumns = {
     administration: [
       'Cash',
@@ -1046,26 +1042,37 @@ const fetchPieChartData = (tableName) => (req, res) => {
     backoffice: ['Pay', 'Billing', 'Report', 'Mail'],
     audit: ['FS', 'Hours'],
     advisory: ['Project', 'Hours'],
-    yearwork: ['IB', 'FS', 'VPB', 'SUP', 'KVK', 'YW O/C'],
+    yearwork: ['IB', 'FS', 'VPB', 'SUP', 'KVK', 'YW'],
   }
 
-  if (tableEnumColumns[tableName]) {
-    enumColumns = tableEnumColumns[tableName]
-  } else {
+  const enumColumns = tableEnumColumns[tableName]
+  if (!enumColumns) {
     console.error(`Enum columns not defined for table: ${tableName}`)
     return res.status(500).json({ error: `Enum columns not defined for table: ${tableName}` })
   }
 
-  // Construct the SQL query dynamically based on the enumColumns
-  const columnConditions = enumColumns.map((column) => `${column} IN (?)`).join(' OR ')
+  const caseStatements = enumColumns
+    .map(
+      (column) => `
+    SUM(CASE WHEN ${column} = 'O' THEN 1 ELSE 0 END) AS ${column}_O,
+    SUM(CASE WHEN ${column} = 'W' THEN 1 ELSE 0 END) AS ${column}_W,
+    SUM(CASE WHEN ${column} = 'NA' THEN 1 ELSE 0 END) AS ${column}_NA,
+    SUM(CASE WHEN ${column} = 'DN' THEN 1 ELSE 0 END) AS ${column}_DN,
+    SUM(CASE WHEN ${column} = 'P' THEN 1 ELSE 0 END) AS ${column}_P,
+    SUM(CASE WHEN ${column} = 'R' THEN 1 ELSE 0 END) AS ${column}_R,
+    SUM(CASE WHEN ${column} = 'D' THEN 1 ELSE 0 END) AS ${column}_D,
+    SUM(CASE WHEN ${column} = 'A' THEN 1 ELSE 0 END) AS ${column}_A,
+    SUM(CASE WHEN ${column} = 'C' THEN 1 ELSE 0 END) AS ${column}_C
+  `,
+    )
+    .join(',')
 
   const query = `
-    SELECT ${enumColumns.join(', ')}, COUNT(*) AS count
+    SELECT ${caseStatements}
     FROM ${tableName}
     WHERE ClientID = ? AND 
     ((Year > ? OR (Year = ? AND Month >= ?)) AND 
     (Year < ? OR (Year = ? AND Month <= ?)))
-    GROUP BY ${enumColumns.join(', ')}
   `
 
   const queryParams = [clientId, startYear, startYear, startMonth, endYear, endYear, endMonth]
@@ -1076,27 +1083,81 @@ const fetchPieChartData = (tableName) => (req, res) => {
       return res.status(500).json({ error: `Failed to fetch data for ${tableName}` })
     }
 
-    console.log('Fetched results:', results)
-
     const counts = results.reduce((acc, row) => {
-      // Iterate over each enum column dynamically
       enumColumns.forEach((column) => {
-        if (!acc[column]) {
-          acc[column] = {}
-        }
-        acc[column][row[column]] = row.count
+        ;['O', 'W', 'NA', 'DN', 'P', 'R', 'D', 'A', 'C'].forEach((option) => {
+          const key = `${column}_${option.replace('/', '_')}` // Replace '/' with '_' to avoid issues
+          acc[option] = (acc[option] || 0) + (row[key] || 0)
+        })
       })
       return acc
     }, {})
-
-    console.log('Counts:', counts)
 
     res.json(counts)
   })
 }
 
-module.exports = fetchPieChartData
+//Project overview
+const tableEnumColumns = {
+  administration: [
+    'Cash',
+    'Bank',
+    'Invoice',
+    'LIP',
+    'TB',
+    'VAT',
+    'ICP',
+    'Salary',
+    'PAWW',
+    'Pension',
+    'TKH',
+    'CBS',
+    'CBAM',
+    'OSS',
+  ],
+  backoffice: ['Pay', 'Billing', 'Report', 'Mail'],
+  audit: ['FS', 'Hours'],
+  advisory: ['Project', 'Hours'],
+  yearwork: ['IB', 'FS', 'VPB', 'SUP', 'KVK', 'YW'],
+}
 
+// Endpoint to calculate and fetch option counts
+app.get('/api/projects/:projectId/stats', (req, res) => {
+  const { projectId } = req.params;
+  const { tableName, columnName } = req.query; // Fetch table and column name from query params
+
+  const query = `
+    SELECT ${columnName} AS option, COUNT(*) AS count
+    FROM ${tableName}
+    WHERE ClientID IN (
+      SELECT ID FROM clients WHERE ProjectID = ?
+    )
+    GROUP BY ${columnName}
+  `;
+
+  db.query(query, [projectId], (err, results) => {
+    if (err) {
+      console.error('Error fetching stats:', err);
+      res.status(500).json({ error: 'Failed to fetch stats' });
+    } else {
+      const optionCounts = results.reduce((acc, row) => {
+        acc[row.option] = row.count;
+        return acc;
+      }, {});
+
+      res.json(optionCounts);
+    }
+  });
+});
+
+  Promise.all(queries)
+    .then(() => res.json(counts))
+    .catch((err) => {
+      console.error('Error executing queries:', err)
+      res.status(500).json({ error: 'Internal server error' })
+    })
+})
+//=====================Date FILTER===========================//
 const saveTabData = (tableName) => (req, res) => {
   const clientId = req.params.clientId
   const data = req.body
