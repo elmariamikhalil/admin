@@ -24,7 +24,7 @@ import {
 import CIcon from '@coreui/icons-react'
 import { cilPeople, cilFullscreen, cilPencil } from '@coreui/icons'
 
-const ENDPOINT = 'http://localhost:5000'
+const ENDPOINT = 'http://localhost:5000' // Your server URL
 
 const ProjectDetailPage = () => {
   const { id } = useParams()
@@ -36,6 +36,8 @@ const ProjectDetailPage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [totalOptionCounts, setTotalOptionCounts] = useState({})
+  const [selectedTable, setSelectedTable] = useState('')
+  const [selectedColumn, setSelectedColumn] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -43,13 +45,19 @@ const ProjectDetailPage = () => {
     fetchTeam(id)
     fetchClients(id)
     fetchHoursDetails(id)
-    fetchStats(id)
   }, [id])
+
+  useEffect(() => {
+    if (selectedTable && selectedColumn) {
+      fetchOptionCounts(selectedTable, selectedColumn)
+    }
+  }, [selectedTable, selectedColumn])
 
   const fetchProject = async (projectId) => {
     try {
-      const response = await axios.get(`${ENDPOINT}/api/projects/${projectId}`)
-      setProject(response.data)
+      const response = await fetch(`${ENDPOINT}/api/projects/${projectId}`)
+      const data = await response.json()
+      setProject(data)
     } catch (error) {
       console.error('Error fetching project:', error)
     }
@@ -57,8 +65,9 @@ const ProjectDetailPage = () => {
 
   const fetchTeam = async (projectId) => {
     try {
-      const response = await axios.get(`${ENDPOINT}/api/projects/${projectId}/team`)
-      setTeam(response.data)
+      const response = await fetch(`${ENDPOINT}/api/projects/${projectId}/team`)
+      const data = await response.json()
+      setTeam(data)
     } catch (error) {
       console.error('Error fetching team:', error)
     }
@@ -75,20 +84,26 @@ const ProjectDetailPage = () => {
 
   const fetchHoursDetails = async (projectId) => {
     try {
-      const response = await axios.get(`${ENDPOINT}/api/projects/${projectId}/hours`)
-      setHoursSigned(response.data.hoursSigned)
-      setFulfilledHours(response.data.fulfilledHours)
+      const response = await fetch(`${ENDPOINT}/api/projects/${projectId}/hours`)
+      const data = await response.json()
+      setHoursSigned(data.hoursSigned)
+      setFulfilledHours(data.fulfilledHours)
     } catch (error) {
       console.error('Error fetching hours details:', error)
     }
   }
 
-  const fetchStats = async (projectId) => {
+  const fetchOptionCounts = async (tableName, columnName) => {
     try {
-      const response = await axios.get(`${ENDPOINT}/api/projects/${projectId}/stats`)
+      const response = await axios.get(`${ENDPOINT}/api/projects/${id}/stats`, {
+        params: {
+          tableName,
+          columnName,
+        },
+      })
       setTotalOptionCounts(response.data)
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      console.error('Error fetching option counts:', error)
     }
   }
 
@@ -248,25 +263,65 @@ const ProjectDetailPage = () => {
         </CCol>
       </CRow>
 
-      {/* Displaying Option Counts */}
+      <CRow>
+        <CCol sm="6" lg="4">
+          <CCard>
+            <CCardHeader>
+              <CFormSelect value={selectedTable} onChange={(e) => setSelectedTable(e.target.value)}>
+                <option value="">Select Table</option>
+                <option value="administration">Administration</option>
+                {/* Add other tables here */}
+              </CFormSelect>
+            </CCardHeader>
+            <CCardBody>
+              {selectedTable && (
+                <CFormSelect
+                  value={selectedColumn}
+                  onChange={(e) => setSelectedColumn(e.target.value)}
+                >
+                  <option value="">Select Column</option>
+                  {selectedTable === 'administration' && (
+                    <>
+                      <option value="Cash">Cash</option>
+                      <option value="Bank">Bank</option>
+                      {/* Add other columns here */}
+                    </>
+                  )}
+                  {/* Add column options for other tables here */}
+                </CFormSelect>
+              )}
+            </CCardBody>
+          </CCard>
+        </CCol>
+      </CRow>
+
       <CRow>
         {/* Displaying Option Counts in Tables */}
-        {Object.keys(totalOptionCounts).map((tabName) => (
-          <CCol sm="6" lg="4" key={tabName}>
-            <CCard></CCard>
+        {Object.keys(totalOptionCounts).length > 0 && (
+          <CCol sm="12">
+            <CCard>
+              <CCardHeader>Option Counts</CCardHeader>
+              <CCardBody>
+                <CTable hover responsive>
+                  <CTableHead>
+                    <CTableRow>
+                      <CTableHeaderCell scope="col">Option</CTableHeaderCell>
+                      <CTableHeaderCell scope="col">Count</CTableHeaderCell>
+                    </CTableRow>
+                  </CTableHead>
+                  <CTableBody>
+                    {Object.keys(totalOptionCounts).map((option) => (
+                      <CTableRow key={option}>
+                        <CTableDataCell>{option}</CTableDataCell>
+                        <CTableDataCell>{totalOptionCounts[option]}</CTableDataCell>
+                      </CTableRow>
+                    ))}
+                  </CTableBody>
+                </CTable>
+              </CCardBody>
+            </CCard>
           </CCol>
-        ))}
-
-        {Object.keys(totalOptionCounts).map((option) => (
-          <CCol sm="6" lg="4" key={option}>
-            <CWidgetStatsF
-              color="info"
-              icon={<CIcon width={24} icon={cilPeople} />}
-              title={option}
-              value={totalOptionCounts[option]}
-            />
-          </CCol>
-        ))}
+        )}
       </CRow>
     </div>
   )

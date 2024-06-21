@@ -966,7 +966,29 @@ app.get('/projects/:id/hours', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch hours details' })
   }
 })
+const fetchPeriods = async (clientId) => {
+  try {
+    const query = `
+      SELECT 
+        (SELECT Period FROM administration WHERE ClientID = ? AND VAT IS NOT NULL LIMIT 1) AS VATPeriod,
+        (SELECT Period FROM administration WHERE ClientID = ? AND ICP IS NOT NULL LIMIT 1) AS ICPPeriod
+    `
+    const [results] = await pool.query(query, [clientId, clientId])
 
+    if (!results.length) {
+      throw new Error('Periods not found')
+    }
+
+    const { VATPeriod, ICPPeriod } = results[0]
+
+    return { VATPeriod, ICPPeriod }
+  } catch (error) {
+    console.error('Error fetching periods:', error)
+    throw error // Re-throw the error to handle it in the caller function
+  }
+}
+
+module.exports = { fetchPeriods }
 //===========================CLeint Details DATA===================================//
 app.get('/api/teams/:teamId', (req, res) => {
   const teamId = req.params.teamId
@@ -1020,8 +1042,9 @@ const fetchTabData = (tableName) => (req, res) => {
 }
 const fetchPieChartData = (tableName) => (req, res) => {
   const { clientId } = req.params
-  const { startYear, startMonth, endYear, endMonth } = req.query
+  const { startYear, startMonth, endYear, endMonth, column } = req.query
 
+  // Define the enum columns for each table
   const tableEnumColumns = {
     administration: [
       'Cash',
@@ -1051,48 +1074,57 @@ const fetchPieChartData = (tableName) => (req, res) => {
     return res.status(500).json({ error: `Enum columns not defined for table: ${tableName}` })
   }
 
-  const caseStatements = enumColumns
+  // If column filter is provided, use only that column; otherwise, use all columns
+  const columnsToUse = column ? [column] : enumColumns
+
+  // Generate the CASE statements for each enum column
+  const caseStatements = columnsToUse
     .map(
-      (column) => `
-    SUM(CASE WHEN ${column} = 'O' THEN 1 ELSE 0 END) AS ${column}_O,
-    SUM(CASE WHEN ${column} = 'W' THEN 1 ELSE 0 END) AS ${column}_W,
-    SUM(CASE WHEN ${column} = 'NA' THEN 1 ELSE 0 END) AS ${column}_NA,
-    SUM(CASE WHEN ${column} = 'DN' THEN 1 ELSE 0 END) AS ${column}_DN,
-    SUM(CASE WHEN ${column} = 'P' THEN 1 ELSE 0 END) AS ${column}_P,
-    SUM(CASE WHEN ${column} = 'R' THEN 1 ELSE 0 END) AS ${column}_R,
-    SUM(CASE WHEN ${column} = 'D' THEN 1 ELSE 0 END) AS ${column}_D,
-    SUM(CASE WHEN ${column} = 'A' THEN 1 ELSE 0 END) AS ${column}_A,
-    SUM(CASE WHEN ${column} = 'C' THEN 1 ELSE 0 END) AS ${column}_C
-  `,
+      (col) => `
+      SUM(CASE WHEN ${col} = 'O' THEN 1 ELSE 0 END) AS ${col}_O,
+      SUM(CASE WHEN ${col} = 'W' THEN 1 ELSE 0 END) AS ${col}_W,
+      SUM(CASE WHEN ${col} = 'NA' THEN 1 ELSE 0 END) AS ${col}_NA,
+      SUM(CASE WHEN ${col} = 'DN' THEN 1 ELSE 0 END) AS ${col}_DN,
+      SUM(CASE WHEN ${col} = 'P' THEN 1 ELSE 0 END) AS ${col}_P,
+      SUM(CASE WHEN ${col} = 'R' THEN 1 ELSE 0 END) AS ${col}_R,
+      SUM(CASE WHEN ${col} = 'D' THEN 1 ELSE 0 END) AS ${col}_D,
+      SUM(CASE WHEN ${col} = 'A' THEN 1 ELSE 0 END) AS ${col}_A,
+      SUM(CASE WHEN ${col} = 'C' THEN 1 ELSE 0 END) AS ${col}_C
+    `,
     )
     .join(',')
 
+  // Construct the query with the generated CASE statements
   const query = `
     SELECT ${caseStatements}
-    FROM ${tableName}
-    WHERE ClientID = ? AND 
-    ((Year > ? OR (Year = ? AND Month >= ?)) AND 
-    (Year < ? OR (Year = ? AND Month <= ?)))
-  `
+  FROM ${tableName}
+  WHERE ClientID = ? AND 
+  ((Year > ? OR (Year = ? AND Month >= ?)) AND 
+  (Year < ? OR (Year = ? AND Month <= ?))) ${column ? `AND ${column} IS NOT NULL` : ''}
+`
 
+  // Query parameters to be used in the query
   const queryParams = [clientId, startYear, startYear, startMonth, endYear, endYear, endMonth]
 
+  // Execute the query
   pool.query(query, queryParams, (error, results) => {
     if (error) {
       console.error(`Error fetching data for ${tableName}:`, error)
       return res.status(500).json({ error: `Failed to fetch data for ${tableName}` })
     }
 
+    // Accumulate counts for each enum option
     const counts = results.reduce((acc, row) => {
-      enumColumns.forEach((column) => {
+      columnsToUse.forEach((col) => {
         ;['O', 'W', 'NA', 'DN', 'P', 'R', 'D', 'A', 'C'].forEach((option) => {
-          const key = `${column}_${option.replace('/', '_')}` // Replace '/' with '_' to avoid issues
+          const key = `${col}_${option}`
           acc[option] = (acc[option] || 0) + (row[key] || 0)
         })
       })
       return acc
     }, {})
 
+    // Send the response with the accumulated counts
     res.json(counts)
   })
 }
@@ -1123,39 +1155,72 @@ const tableEnumColumns = {
 
 // Endpoint to calculate and fetch option counts
 app.get('/api/projects/:projectId/stats', (req, res) => {
-  const { projectId } = req.params;
-  const { tableName, columnName } = req.query; // Fetch table and column name from query params
+  const { projectId } = req.params
+  const { table, column } = req.query
+  const counts = {}
 
-  const query = `
-    SELECT ${columnName} AS option, COUNT(*) AS count
-    FROM ${tableName}
-    WHERE ClientID IN (
-      SELECT ID FROM clients WHERE ProjectID = ?
-    )
-    GROUP BY ${columnName}
-  `;
-
-  db.query(query, [projectId], (err, results) => {
-    if (err) {
-      console.error('Error fetching stats:', err);
-      res.status(500).json({ error: 'Failed to fetch stats' });
-    } else {
-      const optionCounts = results.reduce((acc, row) => {
-        acc[row.option] = row.count;
-        return acc;
-      }, {});
-
-      res.json(optionCounts);
-    }
-  });
-});
-
-  Promise.all(queries)
-    .then(() => res.json(counts))
-    .catch((err) => {
-      console.error('Error executing queries:', err)
-      res.status(500).json({ error: 'Internal server error' })
+  // Function to process query results
+  const processResults = (results, column) => {
+    results.forEach((row) => {
+      const value = row[column]
+      if (value) {
+        if (!counts[value]) {
+          counts[value] = 0
+        }
+        counts[value]++
+      }
     })
+  }
+
+  // Check if table and column are specified
+  if (table && column) {
+    if (!tableEnumColumns[table] || !tableEnumColumns[table].includes(column)) {
+      return res.status(400).json({ error: 'Invalid table or column' })
+    }
+
+    pool.query(
+      `SELECT ${column} FROM ${table} WHERE ClientID IN (SELECT ID FROM clients WHERE ProjectID = ?)`,
+      [projectId],
+      (err, results) => {
+        if (err) {
+          console.error('Error executing query:', err)
+          return res.status(500).json({ error: 'Internal server error' })
+        }
+        processResults(results, column)
+        res.json(counts)
+      },
+    )
+  } else {
+    // Fetch counts for all tables and columns if no specific filter is applied
+    const queries = []
+
+    Object.keys(tableEnumColumns).forEach((table) => {
+      tableEnumColumns[table].forEach((column) => {
+        queries.push(
+          new Promise((resolve, reject) => {
+            pool.query(
+              `SELECT ${column} FROM ${table} WHERE ClientID IN (SELECT ID FROM clients WHERE ProjectID = ?)`,
+              [projectId],
+              (err, results) => {
+                if (err) {
+                  return reject(err)
+                }
+                processResults(results, column)
+                resolve()
+              },
+            )
+          }),
+        )
+      })
+    })
+
+    Promise.all(queries)
+      .then(() => res.json(counts))
+      .catch((err) => {
+        console.error('Error executing queries:', err)
+        res.status(500).json({ error: 'Internal server error' })
+      })
+  }
 })
 //=====================Date FILTER===========================//
 const saveTabData = (tableName) => (req, res) => {

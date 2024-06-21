@@ -58,11 +58,14 @@ const CompanyDetailPage = () => {
   const [doughnutData, setDoughnutData] = useState(null)
   const [selectedYear, setSelectedYear] = useState(currentYear)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [selectedColumn, setSelectedColumn] = useState('')
   const [startYear, setStartYear] = useState(currentYear)
   const [startMonth, setStartMonth] = useState(new Date().getMonth() + 1)
   const [endYear, setEndYear] = useState(currentYear)
   const [endMonth, setEndMonth] = useState(new Date().getMonth() + 1)
   const [dataExists, setDataExists] = useState(true)
+  const [vatPeriod, setVatPeriod] = useState('')
+  const [icpPeriod, setIcpPeriod] = useState('')
 
   useEffect(() => {
     const fetchCompanyDetails = async () => {
@@ -120,7 +123,7 @@ const CompanyDetailPage = () => {
     const fetchPieChartData = async () => {
       try {
         const response = await fetch(
-          `${ENDPOINT}/api/pie/${activeTab}/${clientId}?startYear=${startYear}&startMonth=${startMonth}&endYear=${endYear}&endMonth=${endMonth}`,
+          `${ENDPOINT}/api/pie/${activeTab}/${clientId}?startYear=${startYear}&startMonth=${startMonth}&endYear=${endYear}&endMonth=${endMonth}&column=${selectedColumn}`,
         )
         const data = await response.json()
 
@@ -132,6 +135,7 @@ const CompanyDetailPage = () => {
           setDoughnutData({
             labels,
             series,
+            colors: getColors(labels), // Ensure colors are populated correctly
           })
         } else {
           console.error('Error fetching pie chart data:', data.error)
@@ -142,7 +146,22 @@ const CompanyDetailPage = () => {
     }
 
     fetchPieChartData()
-  }, [clientId, activeTab, startYear, startMonth, endYear, endMonth])
+  }, [clientId, activeTab, startYear, startMonth, endYear, endMonth, selectedColumn])
+  const getColors = (labels) => {
+    const colorMap = {
+      NA: '#1E90FF', // Dodger Blue
+      O: '#FF6347', // Tomato
+      DN: '#32CD32', // Lime Green
+      W: '#FFD700', // Gold
+      P: '#8A2BE2', // Blue Violet
+      R: '#FFA500', // Orange
+      D: '#FF1493', // Deep Pink
+      A: '#00CED1', // Dark Turquoise
+      C: '#20B2AA', // Light Sea Green
+    }
+
+    return labels.map((label) => colorMap[label])
+  }
 
   const fetchTabData = async (tab) => {
     try {
@@ -165,6 +184,24 @@ const CompanyDetailPage = () => {
       setDataExists(false)
     }
   }
+  useEffect(() => {
+    const fetchPeriods = async () => {
+      try {
+        const response = await fetch(`${ENDPOINT}/api/administration/period/${clientId}`)
+        const data = await response.json()
+        if (response.ok) {
+          setVatPeriod(data.PeriodVAT)
+          setIcpPeriod(data.PeriodICP)
+        } else {
+          console.error('Error fetching periods:', data.error)
+        }
+      } catch (error) {
+        console.error('Error fetching periods:', error)
+      }
+    }
+
+    fetchPeriods()
+  }, [clientId])
 
   const extractInitials = (name) => {
     return name
@@ -176,7 +213,9 @@ const CompanyDetailPage = () => {
   const handleTabChange = (tab) => {
     setActiveTab(tab)
   }
-
+  const handleColumnChange = (event) => {
+    setSelectedColumn(event.target.value)
+  }
   const handleSelectChange = (event, field) => {
     setTabData((prevData) => ({
       ...prevData,
@@ -238,7 +277,7 @@ const CompanyDetailPage = () => {
     setEndMonth(event.target.value)
   }
 
-  const chartOptions = {
+  /*const chartOptions = {
     chart: {
       width: 380,
       type: 'pie',
@@ -258,7 +297,7 @@ const CompanyDetailPage = () => {
       },
     ],
   }
-  const chartSeries = doughnutData ? doughnutData.series : []
+  const chartSeries = doughnutData ? doughnutData.series : []*/
 
   return (
     <>
@@ -365,6 +404,14 @@ const CompanyDetailPage = () => {
                     </option>
                   ))}
                 </CFormSelect>
+                <CFormSelect value={selectedColumn} onChange={handleColumnChange} className="mb-3">
+                  <option value="">All Columns</option>
+                  {tabOptions[activeTab].map((col) => (
+                    <option key={col} value={col}>
+                      {col}
+                    </option>
+                  ))}
+                </CFormSelect>
               </div>
               {doughnutData && (
                 <ReactApexChart
@@ -373,6 +420,7 @@ const CompanyDetailPage = () => {
                       type: 'donut',
                     },
                     labels: doughnutData.labels,
+                    colors: doughnutData.colors, // Include the colors array here
                   }}
                   series={doughnutData.series}
                   type="donut"
@@ -436,11 +484,18 @@ const CompanyDetailPage = () => {
                             </option>
                           ))}
                         </CFormSelect>
+                        {option === 'VAT' && tabData.Period && tabData.Period.includes('VAT') && (
+                          <small>{tabData.Period}</small>
+                        )}
+                        {option === 'ICP' && tabData.Period && tabData.Period.includes('ICP') && (
+                          <small>{tabData.Period}</small>
+                        )}
                       </CTableDataCell>
                     </CTableRow>
                   ))}
                 </CTableBody>
               </CTable>
+
               <CButton color="primary" className="mt-3" onClick={handleSaveChanges}>
                 Save Changes
               </CButton>
